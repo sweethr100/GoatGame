@@ -3,14 +3,14 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>염소 클릭 게임 V2</title>
+    <title>염소 클릭 게임 V2 (강화)</title>
     <script src="https://cdn.tailwindcss.com"></script>
     <script src="https://cdnjs.cloudflare.com/ajax/libs/tone/14.7.77/Tone.js"></script>
     <style>
-        /* 사용자 정의 스타일 */
+        /* CSS 스타일은 이전과 동일합니다 */
         body {
             font-family: 'Inter', sans-serif;
-            touch-action: manipulation; /* 모바일에서 더블 탭 확대 방지 */
+            touch-action: manipulation;
             overflow: hidden;
         }
         .game-container {
@@ -72,7 +72,6 @@
             transform: translateY(-3px);
             box-shadow: 0 6px 12px rgba(0,0,0,0.15);
         }
-        /* 점수 획득 시 텍스트 애니메이션 */
         .floating-text {
             position: absolute;
             font-size: 1.5rem;
@@ -81,16 +80,9 @@
             animation: float-up 1s ease-out forwards;
         }
         @keyframes float-up {
-            from {
-                opacity: 1;
-                transform: translateY(0);
-            }
-            to {
-                opacity: 0;
-                transform: translateY(-50px);
-            }
+            from { opacity: 1; transform: translateY(0); }
+            to { opacity: 0; transform: translateY(-50px); }
         }
-        /* 점수판 애니메이션 */
         @keyframes score-pop {
             0% { transform: scale(1); }
             50% { transform: scale(1.25); }
@@ -99,8 +91,6 @@
         .score-popped {
             animation: score-pop 0.3s ease-in-out;
         }
-        
-        /* 시작 버튼 애니메이션 */
         @keyframes pulse {
           0%, 100% { transform: scale(1); }
           50% { transform: scale(1.05); }
@@ -114,6 +104,7 @@
 
     <div class="game-container bg-gradient-to-br from-blue-400 to-purple-400 p-4">
 
+        <!-- HTML 구조는 이전과 동일합니다. -->
         <!-- 시작 화면 -->
         <div id="start-screen" class="screen">
             <h1 class="text-6xl font-bold text-white mb-4 text-center drop-shadow-lg">염소 클릭 V2</h1>
@@ -151,125 +142,105 @@
                 <button id="get-fact-btn" class="btn bg-teal-500 hover:bg-teal-600">🐐 염소 상식 보기</button>
             </div>
         </div>
-
     </div>
 
     <script>
-        // 화면 요소
+        // 화면 요소 및 게임 변수 선언 (이전과 동일)
         const startScreen = document.getElementById('start-screen');
         const gameScreen = document.getElementById('game-screen');
         const resultScreen = document.getElementById('result-screen');
         const gameArea = document.getElementById('game-area');
-
-        // 버튼
         const startBtn = document.getElementById('start-btn');
         const restartBtn = document.getElementById('restart-btn');
         const getCommentaryBtn = document.getElementById('get-commentary-btn');
         const getFactBtn = document.getElementById('get-fact-btn');
-
-        // 디스플레이
         const scoreDisplay = document.getElementById('score');
         const timeDisplay = document.getElementById('time');
         const finalScoreDisplay = document.getElementById('final-score');
         const highScoreDisplay = document.getElementById('high-score');
         const finalHighScoreDisplay = document.getElementById('final-high-score');
-        
-        // 게임 객체
         const goat = document.getElementById('goat');
         const goldenGoat = document.getElementById('golden-goat');
-
-        // Gemini API 관련 요소
         const geminiResponseText = document.getElementById('gemini-response-text');
         const loadingSpinner = document.getElementById('loading-spinner');
-
-        // 게임 상태 변수
         let score = 0;
         let timeLeft = 30;
         let timerId = null;
         let highScore = localStorage.getItem('goatClickerHighScore') || 0;
         let isGoldenGoatActive = false;
-        
-        // 사운드 설정
         const synth = new Tone.Synth().toDestination();
         const playBaaSound = () => {
-            // 사용자의 상호작용 후 오디오 컨텍스트 시작
             if (Tone.context.state !== 'running') {
                 Tone.context.resume();
             }
             synth.triggerAttackRelease("C4", "8n");
         };
 
-        // --- Gemini API 호출 (기존 코드와 동일) ---
+        // --- 이 부분이 변경되었습니다! ---
         async function callGemini(prompt) {
             loadingSpinner.classList.remove('hidden');
             geminiResponseText.textContent = '';
-            // Canvas 환경에서 자동으로 API 키를 제공합니다. 빈 문자열로 두세요.
-            const apiKey = "AIzaSyC7LTMVl5pD9G3z3Kqg2klCMqVCi6aGkIU"; 
-            const apiUrl = `https://generativelanguage.googleapis.com/v1beta/models/gemini-flash-lite-latest:generateContent?key=${apiKey}`;
-            const payload = { contents: [{ parts: [{ text: prompt }] }] };
+            
+            // 1. API 키 변수를 삭제했습니다.
+            // 2. API URL을 우리 서버리스 함수의 경로로 변경했습니다.
+            const serverlessUrl = '/.netlify/functions/gemini'; 
+            
             try {
-                let response;
-                let retries = 3;
-                let delay = 1000;
-                while (retries > 0) {
-                    response = await fetch(apiUrl, {
-                        method: 'POST',
-                        headers: { 'Content-Type': 'application/json' },
-                        body: JSON.stringify(payload)
-                    });
-                    if (response.ok) break;
-                    retries--;
-                    await new Promise(resolve => setTimeout(resolve, delay));
-                    delay *= 2;
+                // 3. fetch 요청의 주소와 body 형식을 변경했습니다.
+                const response = await fetch(serverlessUrl, {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify({ prompt: prompt }) // prompt를 JSON으로 감싸서 보냅니다.
+                });
+
+                if (!response.ok) {
+                    throw new Error(`Serverless function error: ${response.status}`);
                 }
-                if (!response.ok) throw new Error(`API Error: ${response.status}`);
+
                 const result = await response.json();
                 const candidate = result.candidates?.[0];
+                
                 if (candidate && candidate.content?.parts?.[0]?.text) {
                     geminiResponseText.textContent = candidate.content.parts[0].text;
                 } else {
                     geminiResponseText.textContent = "죄송합니다, 답변을 생성할 수 없습니다.";
                 }
             } catch (error) {
-                console.error('Gemini API call failed:', error);
+                console.error('API call failed:', error);
                 geminiResponseText.textContent = "오류가 발생했습니다. 잠시 후 다시 시도해주세요.";
             } finally {
                 loadingSpinner.classList.add('hidden');
             }
         }
+        // --- 여기까지 변경되었습니다. ---
+
+
+        // 나머지 게임 로직은 이전과 동일합니다.
         const getScoreCommentary = () => callGemini(`당신은 재치있는 게임 해설가입니다. 사용자가 30초 동안 염소를 클릭하는 게임을 했고, ${score}점을 받았습니다. 사용자의 점수에 대해 1~2문장으로 짧고 재미있게 한국어로 칭찬 또는 격려의 메시지를 작성해주세요.`);
         const getGoatFact = () => callGemini("염소에 대한 재미있고 놀라운 상식 한 가지를 어린이도 이해하기 쉽게 한국어로 알려주세요.");
 
-        // 최고 점수 업데이트
         function updateHighScoreDisplay() {
             highScoreDisplay.textContent = highScore;
             finalHighScoreDisplay.textContent = highScore;
         }
 
-        // 게임 시작
         function startGame() {
             score = 0;
             timeLeft = 30;
             scoreDisplay.textContent = score;
             timeDisplay.textContent = timeLeft;
             geminiResponseText.textContent = '';
-
             startScreen.classList.add('hidden');
             resultScreen.classList.add('hidden');
             gameScreen.classList.remove('hidden');
-            
             moveGoat();
-
             timerId = setInterval(() => {
                 timeLeft--;
                 timeDisplay.textContent = timeLeft;
-                if (timeLeft <= 0) {
-                    endGame();
-                }
+                if (timeLeft <= 0) endGame();
             }, 1000);
         }
 
-        // 게임 종료
         function endGame() {
             clearInterval(timerId);
             if (score > highScore) {
@@ -277,14 +248,12 @@
                 localStorage.setItem('goatClickerHighScore', highScore);
             }
             updateHighScoreDisplay();
-            
             gameScreen.classList.add('hidden');
             finalScoreDisplay.textContent = score;
             resultScreen.classList.remove('hidden');
             getScoreCommentary();
         }
         
-        // 떠다니는 텍스트 생성
         function showFloatingText(x, y, text, color) {
             const floatingText = document.createElement('div');
             floatingText.textContent = text;
@@ -293,76 +262,52 @@
             floatingText.style.top = `${y}px`;
             floatingText.style.color = color;
             gameArea.appendChild(floatingText);
-
-            setTimeout(() => {
-                floatingText.remove();
-            }, 1000);
+            setTimeout(() => floatingText.remove(), 1000);
         }
 
-        // 염소 이동
         function moveGoat() {
-            // 황금 염소 숨기기
             goat.classList.remove('hidden');
             goldenGoat.classList.add('hidden');
             isGoldenGoatActive = false;
-            
-            // 15% 확률로 황금 염소 등장
             if (Math.random() < 0.15) {
                 isGoldenGoatActive = true;
                 goat.classList.add('hidden');
                 goldenGoat.classList.remove('hidden');
             }
-
             const targetGoat = isGoldenGoatActive ? goldenGoat : goat;
             const gameAreaRect = gameArea.getBoundingClientRect();
             const goatSize = targetGoat.getBoundingClientRect();
-
             const randomX = Math.random() * (gameAreaRect.width - goatSize.width);
             const randomY = Math.random() * (gameAreaRect.height - goatSize.height);
-
             targetGoat.style.left = `${randomX}px`;
             targetGoat.style.top = `${randomY}px`;
         }
 
-        // 점수 증가
         function handleGoatClick(event, points, color) {
             playBaaSound();
             score += points;
             scoreDisplay.textContent = score;
-            
-            // 점수판 팝 효과
             scoreDisplay.parentElement.classList.remove('score-popped');
-            void scoreDisplay.parentElement.offsetWidth; // 리플로우 강제
+            void scoreDisplay.parentElement.offsetWidth;
             scoreDisplay.parentElement.classList.add('score-popped');
-            
-            // 떠다니는 텍스트 표시
             const gameAreaRect = gameArea.getBoundingClientRect();
             const clickX = event.clientX - gameAreaRect.left;
             const clickY = event.clientY - gameAreaRect.top;
             showFloatingText(clickX, clickY, `+${points}`, color);
-
             moveGoat();
         }
 
-        // 이벤트 리스너 설정
-        document.addEventListener('DOMContentLoaded', () => {
-             updateHighScoreDisplay();
-        });
-
+        document.addEventListener('DOMContentLoaded', updateHighScoreDisplay);
         startBtn.addEventListener('click', startGame);
-        
         restartBtn.addEventListener('click', () => {
              resultScreen.classList.add('hidden');
              startScreen.classList.remove('hidden');
         });
-        
         goat.addEventListener('click', (e) => handleGoatClick(e, 1, 'white'));
         goldenGoat.addEventListener('click', (e) => handleGoatClick(e, 5, 'gold'));
-
         getCommentaryBtn.addEventListener('click', getScoreCommentary);
         getFactBtn.addEventListener('click', getGoatFact);
-        
     </script>
-
 </body>
 </html>
+
