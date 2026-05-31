@@ -124,7 +124,6 @@ const PRACTICE_MODES = {
         radius: [0.14, 0.24],
         velocity: [0.25, 0.18, 0.16],
         scoreScale: 1.45,
-        missPenalty: 18,
         minRespawnDistance: 2.4
     },
     reflex: {
@@ -135,7 +134,6 @@ const PRACTICE_MODES = {
         radius: [0.28, 0.46],
         velocity: [0.08, 0.06, 0.05],
         scoreScale: 1.9,
-        missPenalty: 8,
         minRespawnDistance: 3.2
     },
     tracking: {
@@ -146,7 +144,6 @@ const PRACTICE_MODES = {
         radius: [0.14, 0.24],
         velocity: [1.25, 0.78, 0],
         scoreScale: 1,
-        missPenalty: 0,
         minRespawnDistance: 2.6,
         aimOnly: true
     }
@@ -1233,18 +1230,19 @@ function shoot() {
         state.hits += 1;
         state.streak += 1;
         state.bestStreak = Math.max(state.bestStreak, state.streak);
-        const bonus = Math.min(90, state.streak * 6);
-        const points = Math.round((85 / hit.target.baseRadius + bonus) * mode.scoreScale);
+        const points = getTargetPoints(hit.target, mode, state.streak);
         state.score += points;
         state.targets[hit.index] = createTarget(hit.target.position);
         showHitMarker();
         showToast(`+${points}`);
         playTone(720 + Math.min(state.streak, 18) * 22, 0.045, "triangle", 0.08);
     } else {
+        const penaltyTarget = state.targets[0];
+        const penalty = penaltyTarget ? getTargetPoints(penaltyTarget, mode, state.streak + 1) : 0;
         state.streak = 0;
-        if (mode.missPenalty > 0) {
-            state.score = Math.max(0, state.score - mode.missPenalty);
-            showToast(`${t("miss")} -${mode.missPenalty}`);
+        if (penalty > 0) {
+            state.score = Math.max(0, state.score - penalty);
+            showToast(`${t("miss")} -${penalty}`);
         } else {
             showToast(t("miss"));
         }
@@ -1252,6 +1250,11 @@ function shoot() {
     }
 
     updateHud();
+}
+
+function getTargetPoints(target, mode, streak) {
+    const bonus = Math.min(90, streak * 6);
+    return Math.round((85 / target.baseRadius + bonus) * mode.scoreScale);
 }
 
 function pickTarget() {
@@ -3400,7 +3403,10 @@ dom.resumeBtn.addEventListener("click", (event) => {
 dom.pauseSettingsBtn.addEventListener("click", () => openSettings(true));
 dom.backBtn.addEventListener("click", returnToStart);
 
-dom.canvas.addEventListener("click", () => {
+dom.canvas.addEventListener("pointerdown", (event) => {
+    if (event.button !== 0) {
+        return;
+    }
     if (!state.active) {
         return;
     }
