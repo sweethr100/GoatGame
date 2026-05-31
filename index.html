@@ -4,71 +4,539 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>염소 클릭 게임 V3 (강화)</title>
-    <script src="https://cdn.tailwindcss.com"></script>
-    <script src="https://cdnjs.cloudflare.com/ajax/libs/tone/14.7.77/Tone.js"></script>
-    <link rel="stylesheet" href="style.css">
+    <title>GOAT Range - Aim Trainer</title>
+    <link rel="stylesheet" href="style.css?v=20260531-basic-crosshair">
 </head>
 
-<body class="bg-gray-100 flex items-center justify-center min-h-screen">
+<body>
+    <main id="app" class="app-shell">
+        <button id="settings-btn" class="settings-btn" aria-label="Open settings" data-i18n="settings">Settings</button>
 
-    <div class="game-container">
+        <section id="start-screen" class="screen menu-screen">
+            <p class="eyebrow" data-i18n="eyebrow">3D AIM TRAINER</p>
+            <h1>GOAT RANGE</h1>
+            <div class="stat-strip" aria-label="best score">
+                <span data-i18n="best">BEST</span>
+                <strong id="high-score">0</strong>
+            </div>
+            <div class="mode-picker" aria-label="practice modes">
+                <span class="mode-picker-title" data-i18n="practiceMode">Practice Mode</span>
+                <div class="mode-grid">
+                    <button class="mode-card active" type="button" data-practice-mode="precision" aria-pressed="true">
+                        <strong data-i18n="modePrecision">Precision</strong>
+                        <span data-i18n="modePrecisionDesc">Small targets, slower pace, misses cost points.</span>
+                    </button>
+                    <button class="mode-card" type="button" data-practice-mode="reflex" aria-pressed="false">
+                        <strong data-i18n="modeReflex">Reflex</strong>
+                        <span data-i18n="modeReflexDesc">One target at a time for fast flicks.</span>
+                    </button>
+                    <button class="mode-card" type="button" data-practice-mode="tracking" aria-pressed="false">
+                        <strong data-i18n="modeTracking">Tracking</strong>
+                        <span data-i18n="modeTrackingDesc">Follow one small target with your aim. No clicks needed.</span>
+                    </button>
+                </div>
+                <div class="mode-options">
+                    <div class="mode-option-panel" data-mode-options="precision">
+                        <label class="mode-option-field">
+                            <span data-i18n="ballSize">Ball Size</span>
+                            <div class="mode-range-control">
+                                <input id="precision-radius-value" type="number" min="0.08" max="0.42" step="0.01">
+                                <input id="precision-radius-range" type="range" min="0.08" max="0.42" step="0.01">
+                            </div>
+                        </label>
+                        <label class="mode-option-field">
+                            <span data-i18n="maxBallCount">Max Ball Count</span>
+                            <div class="mode-range-control">
+                                <input id="precision-target-count-value" type="number" min="1" max="10" step="1">
+                                <input id="precision-target-count-range" type="range" min="1" max="10" step="1">
+                            </div>
+                        </label>
+                        <label class="mode-option-field">
+                            <span data-i18n="gameDuration">Game Time</span>
+                            <div class="mode-range-control">
+                                <input id="precision-duration-value" type="number" min="15" max="180" step="5">
+                                <input id="precision-duration-range" type="range" min="15" max="180" step="5">
+                            </div>
+                        </label>
+                        <button class="mode-option-reset" type="button" data-reset-mode="precision"
+                            data-i18n="resetModeSettings">Reset Mode Settings</button>
+                    </div>
+                    <div class="mode-option-panel hidden" data-mode-options="reflex">
+                        <label class="mode-option-field">
+                            <span data-i18n="gameDuration">Game Time</span>
+                            <div class="mode-range-control">
+                                <input id="reflex-duration-value" type="number" min="15" max="180" step="5">
+                                <input id="reflex-duration-range" type="range" min="15" max="180" step="5">
+                            </div>
+                        </label>
+                        <button class="mode-option-reset" type="button" data-reset-mode="reflex"
+                            data-i18n="resetModeSettings">Reset Mode Settings</button>
+                    </div>
+                    <div class="mode-option-panel hidden" data-mode-options="tracking">
+                        <label class="mode-option-field">
+                            <span data-i18n="ballSpeed">Ball Speed</span>
+                            <div class="mode-range-control">
+                                <input id="tracking-speed-value" type="number" min="0.2" max="3" step="0.05">
+                                <input id="tracking-speed-range" type="range" min="0.2" max="3" step="0.05">
+                            </div>
+                        </label>
+                        <label class="mode-option-field">
+                            <span data-i18n="ballSize">Ball Size</span>
+                            <div class="mode-range-control">
+                                <input id="tracking-radius-value" type="number" min="0.08" max="0.42" step="0.01">
+                                <input id="tracking-radius-range" type="range" min="0.08" max="0.42" step="0.01">
+                            </div>
+                        </label>
+                        <label class="mode-option-field">
+                            <span data-i18n="gameDuration">Game Time</span>
+                            <div class="mode-range-control">
+                                <input id="tracking-duration-value" type="number" min="15" max="180" step="5">
+                                <input id="tracking-duration-range" type="range" min="15" max="180" step="5">
+                            </div>
+                        </label>
+                        <label class="mode-option-field">
+                            <span data-i18n="movementType">Movement</span>
+                            <select id="tracking-movement">
+                                <option value="horizontal" data-i18n="movementHorizontal">Horizontal Random</option>
+                                <option value="random" data-i18n="movementRandom">Horizontal + Vertical Random</option>
+                            </select>
+                        </label>
+                        <button class="mode-option-reset" type="button" data-reset-mode="tracking"
+                            data-i18n="resetModeSettings">Reset Mode Settings</button>
+                    </div>
+                </div>
+            </div>
+            <button id="start-btn" class="primary-btn" data-i18n="startDrill">Start Drill</button>
+            <p id="support-message" class="support-message" role="status"></p>
+        </section>
 
-        <!-- 시작 화면 -->
-        <div id="start-screen" class="screen">
-            <h1>염소 클릭 V3</h1>
-            <p>30초 동안 염소를 클릭하세요!<br>콤보를 쌓아 피버 모드를 발동시키세요!</p>
-            <p class="text-2xl text-yellow-300 font-bold mb-8">최고 점수: <span id="high-score">0</span></p>
-            <button id="start-btn" class="btn bg-green-500 hover:bg-green-600">게임 시작</button>
+        <div id="settings-overlay" class="settings-overlay hidden" role="dialog" aria-modal="true"
+            aria-labelledby="settings-heading">
+            <div class="settings-panel" aria-label="settings">
+                <span id="settings-heading" class="settings-title" data-i18n="settings">Settings</span>
+                <div class="settings-tabs" role="tablist" aria-label="settings sections">
+                    <button id="settings-general-tab" class="settings-tab active" type="button" role="tab"
+                        aria-selected="true" aria-controls="settings-general-panel" data-i18n="general">General</button>
+                    <button id="settings-mouse-tab" class="settings-tab" type="button" role="tab"
+                        aria-selected="false" aria-controls="settings-mouse-panel" data-i18n="mouse">Mouse</button>
+                    <button id="settings-crosshair-tab" class="settings-tab" type="button" role="tab"
+                        aria-selected="false" aria-controls="settings-crosshair-panel" data-i18n="crosshair">Crosshair</button>
+                    <button id="settings-screen-tab" class="settings-tab" type="button" role="tab"
+                        aria-selected="false" aria-controls="settings-screen-panel" data-i18n="screen">Screen</button>
+                </div>
+
+                <div id="settings-general-panel" class="settings-tab-panel" role="tabpanel"
+                    aria-labelledby="settings-general-tab">
+                    <label class="setting-field span-2">
+                        <span data-i18n="language">Language</span>
+                        <select id="language-select">
+                            <option value="auto" data-i18n="languageAuto">Auto</option>
+                            <option value="ko">&#54620;&#44397;&#50612;</option>
+                            <option value="en">English</option>
+                        </select>
+                    </label>
+                    <label class="setting-field span-2">
+                        <span data-i18n="theme">Theme</span>
+                        <select id="theme-select">
+                            <option value="auto" data-i18n="themeAuto">Auto</option>
+                            <option value="dark" data-i18n="themeDark">Dark</option>
+                            <option value="light" data-i18n="themeLight">Light</option>
+                        </select>
+                    </label>
+                </div>
+
+                <div id="settings-mouse-panel" class="settings-tab-panel hidden" role="tabpanel"
+                    aria-labelledby="settings-mouse-tab">
+                    <label class="setting-field span-2">
+                        <span data-i18n="sensitivityScale">Sensitivity Scale</span>
+                        <select id="sensitivity-profile">
+                            <option value="overwatch">Overwatch</option>
+                            <option value="fortnite">Fortnite</option>
+                            <option value="valorant">Valorant</option>
+                            <option value="source">CS2 / Apex / Source</option>
+                        </select>
+                    </label>
+                    <label class="setting-field base-sensitivity-field">
+                        <span data-i18n="gameSens">Game Sens</span>
+                        <input id="sensitivity-value" type="number" min="0.00001" max="100" step="0.00001"
+                            inputmode="decimal">
+                    </label>
+                    <label class="setting-field axis-sensitivity-field">
+                        <span data-i18n="horizontalSens">Horizontal Sens</span>
+                        <input id="sensitivity-x" type="number" min="0.00001" max="100" step="0.00001" inputmode="decimal">
+                    </label>
+                    <label class="setting-field axis-sensitivity-field">
+                        <span data-i18n="verticalSens">Vertical Sens</span>
+                        <input id="sensitivity-y" type="number" min="0.00001" max="100" step="0.00001" inputmode="decimal">
+                    </label>
+                    <label class="toggle-row axis-toggle">
+                        <span data-i18n="separateAxisSensitivity">&#51340;&#50864;/&#49345;&#54616; &#46384;&#47196; &#49444;&#51221;</span>
+                        <input id="separate-axis-sensitivity" type="checkbox">
+                        <i aria-hidden="true"></i>
+                    </label>
+                    <label class="toggle-row">
+                        <span data-i18n="invertX">Invert X</span>
+                        <input id="invert-x" type="checkbox">
+                        <i aria-hidden="true"></i>
+                    </label>
+                    <label class="toggle-row">
+                        <span data-i18n="invertY">Invert Y</span>
+                        <input id="invert-y" type="checkbox">
+                        <i aria-hidden="true"></i>
+                    </label>
+                    <div class="sensitivity-readout span-2">
+                        <span data-i18n="cm360">cm/360</span>
+                        <strong id="cm360-output">-</strong>
+                    </div>
+                </div>
+
+                <div id="settings-crosshair-panel" class="settings-tab-panel hidden" role="tabpanel"
+                    aria-labelledby="settings-crosshair-tab">
+                    <div class="crosshair-preview-panel span-2">
+                        <div id="crosshair-settings-preview" class="reticle crosshair-preview" aria-hidden="true">
+                            <span></span>
+                        </div>
+                    </div>
+                    <div class="crosshair-editor-title span-2" data-i18n="crosshairCustom">Basic</div>
+                    <label class="setting-field setting-range hidden">
+                        <span data-i18n="crosshairSize">Size</span>
+                        <div class="range-control">
+                            <input id="crosshair-size-value" type="number" min="18" max="96" step="1" inputmode="numeric">
+                            <input id="crosshair-size-range" type="range" min="18" max="96" step="1">
+                        </div>
+                    </label>
+                    <label class="setting-field" data-crosshair-setting="color">
+                        <span data-i18n="crosshairColor">Color</span>
+                        <input id="crosshair-color" class="color-input" type="color">
+                    </label>
+                    <label class="setting-field setting-range hidden" data-crosshair-setting="thickness">
+                        <span data-i18n="crosshairThickness">Thickness</span>
+                        <div class="range-control">
+                            <input id="crosshair-thickness-value" type="number" min="1" max="10" step="1" inputmode="numeric">
+                            <input id="crosshair-thickness-range" type="range" min="1" max="10" step="1">
+                        </div>
+                    </label>
+                    <label class="setting-field setting-range hidden" data-crosshair-setting="gap">
+                        <span data-i18n="crosshairGapSize">Gap</span>
+                        <div class="range-control">
+                            <input id="crosshair-gap-value" type="number" min="0" max="36" step="1" inputmode="numeric">
+                            <input id="crosshair-gap-range" type="range" min="0" max="36" step="1">
+                        </div>
+                    </label>
+                    <label class="setting-field setting-range hidden">
+                        <span data-i18n="crosshairOpacity">Opacity</span>
+                        <div class="range-control">
+                            <input id="crosshair-opacity-value" type="number" min="0.1" max="1" step="0.05" inputmode="decimal">
+                            <input id="crosshair-opacity-range" type="range" min="0.1" max="1" step="0.05">
+                        </div>
+                    </label>
+                    <label class="setting-field setting-range hidden" data-crosshair-setting="outline">
+                        <span data-i18n="crosshairOutline">Outline</span>
+                        <div class="range-control">
+                            <input id="crosshair-outline-value" type="number" min="0" max="8" step="1" inputmode="numeric">
+                            <input id="crosshair-outline-range" type="range" min="0" max="8" step="1">
+                        </div>
+                    </label>
+                    <label class="setting-field setting-range hidden" data-crosshair-setting="dot-size">
+                        <span data-i18n="crosshairDotSize">Dot Size</span>
+                        <div class="range-control">
+                            <input id="crosshair-dot-size-value" type="number" min="1" max="24" step="1" inputmode="numeric">
+                            <input id="crosshair-dot-size-range" type="range" min="1" max="24" step="1">
+                        </div>
+                    </label>
+                    <div id="custom-crosshair-settings" class="custom-crosshair-settings span-2">
+                        <div class="builder-toggle-grid">
+                            <label class="toggle-row">
+                                <span data-i18n="builderDot">Center Dot</span>
+                                <input id="builder-dot" type="checkbox">
+                                <i aria-hidden="true"></i>
+                            </label>
+                            <label class="toggle-row">
+                                <span data-i18n="builderLines">Cross Lines</span>
+                                <input id="builder-lines" type="checkbox">
+                                <i aria-hidden="true"></i>
+                            </label>
+                            <label class="toggle-row">
+                                <span data-i18n="builderRing">Ring</span>
+                                <input id="builder-ring" type="checkbox">
+                                <i aria-hidden="true"></i>
+                            </label>
+                            <label class="toggle-row">
+                                <span data-i18n="builderBox">Corner Box</span>
+                                <input id="builder-box" type="checkbox">
+                                <i aria-hidden="true"></i>
+                            </label>
+                        </div>
+                        <label class="setting-field setting-range">
+                            <span data-i18n="builderDotSize">Dot Size</span>
+                            <div class="range-control">
+                                <input id="builder-dot-size-value" type="number" min="1" max="24" step="1" inputmode="numeric">
+                                <input id="builder-dot-size-range" type="range" min="1" max="24" step="1">
+                            </div>
+                        </label>
+                        <label class="setting-field setting-range">
+                            <span data-i18n="builderLineLength">Line Length</span>
+                            <div class="range-control">
+                                <input id="builder-line-length-value" type="number" min="0" max="48" step="1" inputmode="numeric">
+                                <input id="builder-line-length-range" type="range" min="0" max="48" step="1">
+                            </div>
+                        </label>
+                        <label class="setting-field setting-range">
+                            <span data-i18n="builderRingSize">Ring Size</span>
+                            <div class="range-control">
+                                <input id="builder-ring-size-value" type="number" min="8" max="96" step="1" inputmode="numeric">
+                                <input id="builder-ring-size-range" type="range" min="8" max="96" step="1">
+                            </div>
+                        </label>
+                        <label class="setting-field setting-range">
+                            <span data-i18n="builderBoxSize">Box Size</span>
+                            <div class="range-control">
+                                <input id="builder-box-size-value" type="number" min="8" max="96" step="1" inputmode="numeric">
+                                <input id="builder-box-size-range" type="range" min="8" max="96" step="1">
+                            </div>
+                        </label>
+                        <label class="setting-field setting-range hidden">
+                            <span data-i18n="builderRotation">Rotation</span>
+                            <div class="range-control">
+                                <input id="builder-rotation-value" type="number" min="-45" max="45" step="1" inputmode="numeric">
+                                <input id="builder-rotation-range" type="range" min="-45" max="45" step="1">
+                            </div>
+                        </label>
+                        <input id="builder-diagonal" class="file-input" type="checkbox">
+                        <label class="toggle-row">
+                            <span data-i18n="builderImage">Custom Image</span>
+                            <input id="builder-image" type="checkbox">
+                            <i aria-hidden="true"></i>
+                        </label>
+                        <div class="setting-field custom-image-field">
+                            <span data-i18n="customImage">Custom Image</span>
+                            <div class="upload-control">
+                                <label class="secondary-btn upload-btn" for="crosshair-image-input"
+                                    data-i18n="uploadImage">Upload Image</label>
+                                <button id="clear-crosshair-image" class="secondary-btn clear-image-btn" type="button"
+                                    data-i18n="clearImage">Clear</button>
+                                <span id="crosshair-image-status" class="file-name" data-i18n="noImage">No image</span>
+                            </div>
+                            <input id="crosshair-image-input" class="file-input" type="file" accept="image/*">
+                        </div>
+                        <label class="setting-field setting-range">
+                            <span data-i18n="builderImageSize">Image Size</span>
+                            <div class="range-control">
+                                <input id="builder-image-size-value" type="number" min="8" max="160" step="1" inputmode="numeric">
+                                <input id="builder-image-size-range" type="range" min="8" max="160" step="1">
+                            </div>
+                        </label>
+                        <label class="setting-field setting-range">
+                            <span data-i18n="builderImageOpacity">Image Opacity</span>
+                            <div class="range-control">
+                                <input id="builder-image-opacity-value" type="number" min="0.05" max="1" step="0.05" inputmode="decimal">
+                                <input id="builder-image-opacity-range" type="range" min="0.05" max="1" step="0.05">
+                            </div>
+                        </label>
+                    </div>
+                    <div id="valorant-settings" class="valorant-settings span-2 hidden">
+                        <label class="setting-field valorant-code-field">
+                            <span data-i18n="valorantCode">Valorant Code</span>
+                            <div class="code-import-control">
+                                <input id="valorant-code-input" type="text" spellcheck="false"
+                                    placeholder="0;c;1;s;1;P;c;5;...">
+                                <button id="valorant-code-import" class="secondary-btn" type="button"
+                                    data-i18n="importValorantCode">Import Code</button>
+                            </div>
+                        </label>
+                        <label class="toggle-row">
+                            <span data-i18n="valorantCenterDot">Center Dot</span>
+                            <input id="valorant-center-dot" type="checkbox">
+                            <i aria-hidden="true"></i>
+                        </label>
+                        <label class="toggle-row">
+                            <span data-i18n="valorantInnerLines">Inner Lines</span>
+                            <input id="valorant-inner-lines" type="checkbox">
+                            <i aria-hidden="true"></i>
+                        </label>
+                        <label class="setting-field setting-range">
+                            <span data-i18n="valorantInnerOpacity">Inner Opacity</span>
+                            <div class="range-control">
+                                <input id="valorant-inner-opacity-value" type="number" min="0" max="1" step="0.05" inputmode="decimal">
+                                <input id="valorant-inner-opacity-range" type="range" min="0" max="1" step="0.05">
+                            </div>
+                        </label>
+                        <label class="setting-field setting-range">
+                            <span data-i18n="valorantInnerLength">Inner Length</span>
+                            <div class="range-control">
+                                <input id="valorant-inner-length-value" type="number" min="0" max="20" step="1" inputmode="numeric">
+                                <input id="valorant-inner-length-range" type="range" min="0" max="20" step="1">
+                            </div>
+                        </label>
+                        <label class="setting-field setting-range">
+                            <span data-i18n="valorantInnerVerticalLength">Inner Vertical Length</span>
+                            <div class="range-control">
+                                <input id="valorant-inner-vertical-length-value" type="number" min="0" max="20" step="1" inputmode="numeric">
+                                <input id="valorant-inner-vertical-length-range" type="range" min="0" max="20" step="1">
+                            </div>
+                        </label>
+                        <label class="setting-field setting-range">
+                            <span data-i18n="valorantInnerThickness">Inner Thickness</span>
+                            <div class="range-control">
+                                <input id="valorant-inner-thickness-value" type="number" min="1" max="10" step="1" inputmode="numeric">
+                                <input id="valorant-inner-thickness-range" type="range" min="1" max="10" step="1">
+                            </div>
+                        </label>
+                        <label class="setting-field setting-range">
+                            <span data-i18n="valorantInnerOffset">Inner Offset</span>
+                            <div class="range-control">
+                                <input id="valorant-inner-offset-value" type="number" min="0" max="20" step="1" inputmode="numeric">
+                                <input id="valorant-inner-offset-range" type="range" min="0" max="20" step="1">
+                            </div>
+                        </label>
+                        <label class="toggle-row">
+                            <span data-i18n="valorantOuterLines">Outer Lines</span>
+                            <input id="valorant-outer-lines" type="checkbox">
+                            <i aria-hidden="true"></i>
+                        </label>
+                        <label class="setting-field setting-range">
+                            <span data-i18n="valorantOuterOpacity">Outer Opacity</span>
+                            <div class="range-control">
+                                <input id="valorant-outer-opacity-value" type="number" min="0" max="1" step="0.05" inputmode="decimal">
+                                <input id="valorant-outer-opacity-range" type="range" min="0" max="1" step="0.05">
+                            </div>
+                        </label>
+                        <label class="setting-field setting-range">
+                            <span data-i18n="valorantOuterLength">Outer Length</span>
+                            <div class="range-control">
+                                <input id="valorant-outer-length-value" type="number" min="0" max="20" step="1" inputmode="numeric">
+                                <input id="valorant-outer-length-range" type="range" min="0" max="20" step="1">
+                            </div>
+                        </label>
+                        <label class="setting-field setting-range">
+                            <span data-i18n="valorantOuterVerticalLength">Outer Vertical Length</span>
+                            <div class="range-control">
+                                <input id="valorant-outer-vertical-length-value" type="number" min="0" max="20" step="1" inputmode="numeric">
+                                <input id="valorant-outer-vertical-length-range" type="range" min="0" max="20" step="1">
+                            </div>
+                        </label>
+                        <label class="setting-field setting-range">
+                            <span data-i18n="valorantOuterThickness">Outer Thickness</span>
+                            <div class="range-control">
+                                <input id="valorant-outer-thickness-value" type="number" min="1" max="10" step="1" inputmode="numeric">
+                                <input id="valorant-outer-thickness-range" type="range" min="1" max="10" step="1">
+                            </div>
+                        </label>
+                        <label class="setting-field setting-range">
+                            <span data-i18n="valorantOuterOffset">Outer Offset</span>
+                            <div class="range-control">
+                                <input id="valorant-outer-offset-value" type="number" min="0" max="40" step="1" inputmode="numeric">
+                                <input id="valorant-outer-offset-range" type="range" min="0" max="40" step="1">
+                            </div>
+                        </label>
+                    </div>
+                    <button id="reset-crosshair-preset" class="secondary-btn crosshair-reset-btn span-2" type="button"
+                        data-i18n="resetCrosshair">Reset</button>
+                </div>
+                <div id="settings-screen-panel" class="settings-tab-panel hidden" role="tabpanel"
+                    aria-labelledby="settings-screen-tab">
+                    <div class="settings-note span-2" data-i18n="fullscreenHint">
+                        Press F11 to switch browser fullscreen on or off.
+                    </div>
+                    <label class="toggle-row span-2">
+                        <span data-i18n="showFps">Show FPS</span>
+                        <input id="show-fps" type="checkbox">
+                        <i aria-hidden="true"></i>
+                    </label>
+                    <label class="setting-field setting-range">
+                        <span data-i18n="fov">FOV</span>
+                        <div class="range-control">
+                            <input id="fov-value" type="number" min="50" max="110" step="1" inputmode="numeric">
+                            <input id="fov-range" type="range" min="50" max="110" step="1">
+                        </div>
+                    </label>
+                </div>
+                <button id="settings-close-btn" class="settings-close-btn" data-i18n="done">Done</button>
+            </div>
         </div>
 
-        <!-- 게임 화면 -->
-        <div id="game-screen" class="screen hidden justify-start items-stretch">
-            <div class="hud-panel">
+        <section id="game-screen" class="screen game-screen hidden">
+            <canvas id="gpu-canvas" tabindex="0" aria-label="3D aim training arena"></canvas>
+            <div class="scene-shade"></div>
+
+            <div class="hud-panel" aria-label="match stats">
                 <div class="hud-item">
-                    <span class="hud-label">Score</span>
+                    <span class="hud-label" data-i18n="score">Score</span>
                     <span id="score" class="hud-value">0</span>
                 </div>
                 <div class="hud-item">
-                    <span class="hud-label">Combo</span>
-                    <span id="combo" class="hud-value text-yellow-400">0</span>
+                    <span class="hud-label" data-i18n="accuracy">Accuracy</span>
+                    <span id="accuracy" class="hud-value">100%</span>
                 </div>
                 <div class="hud-item">
-                    <span class="hud-label">Time</span>
-                    <span id="time" class="hud-value">30</span>
+                    <span class="hud-label" data-i18n="time">Time</span>
+                    <span id="time" class="hud-value">45</span>
+                </div>
+                <div class="hud-item">
+                    <span class="hud-label" data-i18n="streak">Streak</span>
+                    <span id="streak" class="hud-value">0</span>
                 </div>
             </div>
 
-            <div id="game-area" class="relative flex-grow w-full h-full">
-                <img src="goat.jpg" alt="염소" id="goat" class="rounded-full shadow-lg"
-                    onerror="this.onerror=null;this.src='https://placegoat.com/100/100';">
-                <img src="goat.jpg" alt="황금 염소" id="golden-goat" class="rounded-full shadow-lg hidden"
-                    onerror="this.onerror=null;this.src='https://placegoat.com/100/100';">
+            <div id="reticle" class="reticle" aria-hidden="true">
+                <span></span>
             </div>
-        </div>
 
-        <!-- 결과 화면 -->
-        <div id="result-screen" class="screen hidden">
-            <h1 class="text-5xl font-bold text-white mb-4 drop-shadow-md">게임 종료!</h1>
-            <p class="text-3xl text-white mb-2">최종 점수: <span id="final-score">0</span>점</p>
-            <p class="text-2xl text-yellow-300 font-bold mb-6">최고 점수: <span id="final-high-score">0</span></p>
-
-            <div id="gemini-response-container"
-                class="mt-4 p-4 bg-white/20 rounded-lg min-h-[100px] max-w-md mx-auto flex items-center justify-center text-center backdrop-blur-sm border border-white/30">
-                <p id="gemini-response-text" class="text-white text-lg"></p>
-                <div id="loading-spinner" class="hidden animate-spin rounded-full h-8 w-8 border-b-2 border-white">
+            <div id="hit-marker" class="hit-marker" aria-hidden="true"></div>
+            <div id="toast" class="toast" role="status"></div>
+            <div id="fps-counter" class="fps-counter hidden" aria-live="off">-- FPS</div>
+            <button id="pause-btn" class="icon-btn" aria-label="Pause" data-i18n="pause">Pause</button>
+            <div id="pause-menu" class="pause-menu hidden" role="dialog" aria-modal="true"
+                aria-labelledby="pause-heading">
+                <div class="pause-panel">
+                    <p class="eyebrow" data-i18n="paused">PAUSED</p>
+                    <h2 id="pause-heading" data-i18n="pauseTitle">Paused</h2>
+                    <p data-i18n="pauseBody">Press Resume to get back in.</p>
+                    <div class="pause-actions">
+                        <button id="resume-btn" class="primary-btn resume-btn">
+                            <span data-i18n="resume">Resume</span>
+                            <kbd>Tab</kbd>
+                        </button>
+                        <button id="pause-settings-btn" class="secondary-btn" data-i18n="settings">Settings</button>
+                        <button id="back-btn" class="secondary-btn" data-i18n="backToMenu">Back to Menu</button>
+                    </div>
                 </div>
             </div>
+        </section>
 
-            <div class="flex flex-wrap justify-center gap-4 mt-6">
-                <button id="restart-btn" class="btn bg-blue-500 hover:bg-blue-600">다시하기</button>
-                <button id="get-commentary-btn" class="btn bg-purple-500 hover:bg-purple-600">✨ 평가 보기</button>
-                <button id="get-fact-btn" class="btn bg-teal-500 hover:bg-teal-600">🐐 염소 상식</button>
+        <section id="result-screen" class="screen result-screen hidden">
+            <p class="eyebrow" data-i18n="drillComplete">DRILL COMPLETE</p>
+            <h1 id="result-title">GOAT RANGE</h1>
+            <div class="result-grid">
+                <div>
+                    <span data-i18n="score">Score</span>
+                    <strong id="final-score">0</strong>
+                </div>
+                <div>
+                    <span data-i18n="accuracy">Accuracy</span>
+                    <strong id="final-accuracy">0%</strong>
+                </div>
+                <div>
+                    <span data-i18n="best">Best</span>
+                    <strong id="final-high-score">0</strong>
+                </div>
             </div>
-        </div>
-    </div>
+            <section class="nano-feedback" aria-labelledby="nano-feedback-title" aria-live="polite">
+                <div class="nano-feedback-heading">
+                    <span id="nano-feedback-title" data-i18n="nanoCoach">Gemini Nano</span>
+                </div>
+                <p id="nano-feedback-status" class="nano-feedback-status" data-i18n="nanoPreparing">
+                    Preparing local feedback...
+                </p>
+                <p id="nano-feedback-text" class="nano-feedback-text hidden"></p>
+                <button id="nano-feedback-retry" class="secondary-btn nano-feedback-retry hidden" type="button"
+                    data-i18n="nanoRetry">Try Nano Again</button>
+            </section>
+            <button id="restart-btn" class="primary-btn" data-i18n="runItBack">Run It Back</button>
+        </section>
+    </main>
 
-    <script src="script.js"></script>
+    <script type="module" src="script.js?v=20260531-basic-crosshair"></script>
 </body>
 
 </html>
