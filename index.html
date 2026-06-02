@@ -564,14 +564,15 @@
             <section class="leaderboard-submit" aria-labelledby="leaderboard-submit-title">
                 <div class="leaderboard-preference-heading">
                     <span id="leaderboard-submit-title" data-i18n="leaderboard">Leaderboard</span>
-                    <label class="leaderboard-auto-submit-toggle" data-i18n-aria-label="leaderboardAutoSubmit">
-                        <input id="leaderboard-auto-submit" type="checkbox">
-                        <i aria-hidden="true"></i>
-                    </label>
                 </div>
-                <label class="leaderboard-name-field">
+                <label class="setting-field leaderboard-name-field">
                     <span data-i18n="nickname">Nickname</span>
                     <input id="leaderboard-player-name" type="text" minlength="2" maxlength="16" autocomplete="nickname">
+                </label>
+                <label class="toggle-row leaderboard-auto-submit-row" data-i18n-aria-label="leaderboardAutoSubmit">
+                    <span data-i18n="leaderboardAutoSubmit">Auto Submit</span>
+                    <input id="leaderboard-auto-submit" type="checkbox">
+                    <i aria-hidden="true"></i>
                 </label>
                 <p id="leaderboard-submit-status" class="leaderboard-submit-status" role="status"></p>
             </section>

@@ -1,5 +1,8 @@
 # Supabase 리더보드 설정
 
+운영 사이트 주소는 `https://jjack.netlify.app/`입니다. 리더보드 API도 같은
+Netlify 배포에서 실행됩니다.
+
 브라우저는 `/.netlify/functions/leaderboard` 경로의 Netlify Function으로
 리더보드 요청을 보냅니다. 이 함수는 점수를 검증하고 서버에서 Supabase
 service-role 키를 사용합니다. 이 키를 브라우저 코드에 노출하면 안 됩니다.

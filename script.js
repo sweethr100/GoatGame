@@ -282,6 +282,9 @@ const I18N = {
         scoreSubmitting: "Submitting score...",
         scoreSubmitted: "Score submitted to the leaderboard.",
         invalidNickname: "Enter a nickname between 2 and 16 characters.",
+        leaderboardApiMissing: "Leaderboard API was not found. Check the deployed site address.",
+        leaderboardServerError: "The leaderboard server is not configured correctly.",
+        leaderboardScoreRejected: "This score was rejected by the leaderboard validation.",
         scoreSubmitFailed: "Could not submit the score.",
         scoreRateLimited: "Too many scores were submitted. Please try again later.",
         nanoCoach: "Gemini Nano",
@@ -423,6 +426,9 @@ const I18N = {
         scoreSubmitting: "\uc810\uc218\ub97c \ub4f1\ub85d\ud558\ub294 \uc911...",
         scoreSubmitted: "\ub9ac\ub354\ubcf4\ub4dc\uc5d0 \ub4f1\ub85d\ud588\uc2b5\ub2c8\ub2e4.",
         invalidNickname: "\ub2c9\ub124\uc784\uc740 2~16\uc790\ub85c \uc785\ub825\ud574 \uc8fc\uc138\uc694.",
+        leaderboardApiMissing: "\ub9ac\ub354\ubcf4\ub4dc API\ub97c \ucc3e\uc744 \uc218 \uc5c6\uc2b5\ub2c8\ub2e4. \ubc30\ud3ec \uc8fc\uc18c\ub97c \ud655\uc778\ud574 \uc8fc\uc138\uc694.",
+        leaderboardServerError: "\ub9ac\ub354\ubcf4\ub4dc \uc11c\ubc84 \uc124\uc815\uc774 \uc62c\ubc14\ub974\uc9c0 \uc54a\uc2b5\ub2c8\ub2e4.",
+        leaderboardScoreRejected: "\ub9ac\ub354\ubcf4\ub4dc \uac80\uc99d\uc5d0\uc11c \uc774 \uc810\uc218\uac00 \uac70\ubd80\ub418\uc5c8\uc2b5\ub2c8\ub2e4.",
         scoreSubmitFailed: "\uc810\uc218\ub97c \ub4f1\ub85d\ud558\uc9c0 \ubabb\ud588\uc2b5\ub2c8\ub2e4.",
         scoreRateLimited: "\uc810\uc218\ub97c \ub108\ubb34 \uc790\uc8fc \ub4f1\ub85d\ud588\uc2b5\ub2c8\ub2e4. \uc7a0\uc2dc \ud6c4 \ub2e4\uc2dc \uc2dc\ub3c4\ud574 \uc8fc\uc138\uc694.",
         nanoCoach: "Gemini Nano",
@@ -780,6 +786,7 @@ const leaderboardScoresByMode = new Map();
 syncModeUi(false);
 dom.leaderboardPlayerName.value = localStorage.getItem("goatRangeLeaderboardName") || "";
 dom.leaderboardAutoSubmit.checked = settings.leaderboardAutoSubmit;
+syncLeaderboardAutoSubmitAvailability();
 dom.languageSelect.value = settings.languageMode;
 dom.themeSelect.value = settings.themeMode;
 dom.soundEffects.checked = settings.soundEffects;
@@ -1197,15 +1204,14 @@ async function loadLeaderboard(mode = leaderboardMode) {
 }
 
 async function submitLeaderboardScore(summary = lastCompletedDrillSummary) {
-    const playerName = dom.leaderboardPlayerName.value.trim().replace(/\s+/g, " ");
-    const playerNameLength = Array.from(playerName).length;
+    const playerName = getLeaderboardPlayerName();
 
     if (!isLeaderboardEligibleSummary(summary)) {
         setLeaderboardSubmitStatus("customSettingsLeaderboardBlocked");
         return;
     }
 
-    if (!summary || playerNameLength < 2 || playerNameLength > 16) {
+    if (!summary || !isValidLeaderboardPlayerName(playerName)) {
         setLeaderboardSubmitStatus("invalidNickname");
         return;
     }
@@ -1227,6 +1233,18 @@ async function submitLeaderboardScore(summary = lastCompletedDrillSummary) {
                 setLeaderboardSubmitStatus("scoreRateLimited");
                 return;
             }
+            if (response.status === 404) {
+                setLeaderboardSubmitStatus("leaderboardApiMissing");
+                return;
+            }
+            if (data.error === "invalid_score") {
+                setLeaderboardSubmitStatus("leaderboardScoreRejected");
+                return;
+            }
+            if (data.error === "server_error" || response.status >= 500) {
+                setLeaderboardSubmitStatus("leaderboardServerError");
+                return;
+            }
             throw new Error(`Leaderboard submission failed with ${response.status}.`);
         }
 
@@ -1239,29 +1257,41 @@ async function submitLeaderboardScore(summary = lastCompletedDrillSummary) {
     }
 }
 
+function getLeaderboardPlayerName() {
+    return dom.leaderboardPlayerName.value.trim().replace(/\s+/g, " ");
+}
+
+function isValidLeaderboardPlayerName(playerName = getLeaderboardPlayerName()) {
+    const playerNameLength = Array.from(playerName).length;
+    return playerNameLength >= 2 && playerNameLength <= 16;
+}
+
 function saveLeaderboardNickname() {
-    const playerName = dom.leaderboardPlayerName.value.trim().replace(/\s+/g, " ");
+    const playerName = getLeaderboardPlayerName();
     const playerNameLength = Array.from(playerName).length;
     if (playerNameLength === 0) {
         dom.leaderboardPlayerName.value = "";
         localStorage.removeItem("goatRangeLeaderboardName");
-        setLeaderboardSubmitStatus(getLeaderboardIdleSubmitStatusKey());
+        syncLeaderboardAutoSubmitAvailability(lastCompletedDrillSummary);
+        setLeaderboardSubmitStatus("invalidNickname");
         return;
     }
     if (playerNameLength < 2 || playerNameLength > 16) {
+        syncLeaderboardAutoSubmitAvailability(lastCompletedDrillSummary);
         setLeaderboardSubmitStatus("invalidNickname");
         return;
     }
 
     dom.leaderboardPlayerName.value = playerName;
     localStorage.setItem("goatRangeLeaderboardName", playerName);
+    syncLeaderboardAutoSubmitAvailability(lastCompletedDrillSummary);
     setLeaderboardSubmitStatus(getLeaderboardIdleSubmitStatusKey());
 }
 
 function syncLeaderboardAutoSubmit() {
     if (dom.leaderboardAutoSubmit.disabled) {
         syncLeaderboardAutoSubmitAvailability(lastCompletedDrillSummary);
-        setLeaderboardSubmitStatus("customSettingsLeaderboardBlocked");
+        setLeaderboardSubmitStatus(isValidLeaderboardPlayerName() ? "customSettingsLeaderboardBlocked" : "invalidNickname");
         return;
     }
     settings.leaderboardAutoSubmit = dom.leaderboardAutoSubmit.checked;
@@ -2304,14 +2334,21 @@ function getLeaderboardIdleSubmitStatusKey() {
     if (lastCompletedDrillSummary && !isLeaderboardEligibleSummary(lastCompletedDrillSummary)) {
         return "customSettingsLeaderboardBlocked";
     }
+    if (!isValidLeaderboardPlayerName()) {
+        return "invalidNickname";
+    }
     return settings.leaderboardAutoSubmit ? "" : "leaderboardAutoSubmitOff";
 }
 
 function syncLeaderboardAutoSubmitAvailability(summary = lastCompletedDrillSummary) {
-    const isBlocked = Boolean(summary && !isLeaderboardEligibleSummary(summary));
+    const isBlocked = !isValidLeaderboardPlayerName() || Boolean(summary && !isLeaderboardEligibleSummary(summary));
+    if (isBlocked && settings.leaderboardAutoSubmit) {
+        settings.leaderboardAutoSubmit = false;
+        localStorage.setItem("goatRangeLeaderboardAutoSubmit", "false");
+    }
     dom.leaderboardAutoSubmit.disabled = isBlocked;
     dom.leaderboardAutoSubmit.checked = isBlocked ? false : settings.leaderboardAutoSubmit;
-    dom.leaderboardAutoSubmit.closest(".leaderboard-auto-submit-toggle")?.classList.toggle("is-disabled", isBlocked);
+    dom.leaderboardAutoSubmit.closest(".leaderboard-auto-submit-row")?.classList.toggle("is-disabled", isBlocked);
 }
 
 function syncPracticeSettingsWarning() {
