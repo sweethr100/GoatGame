@@ -1393,9 +1393,21 @@ function prepareNanoCoach() {
 
 function buildNanoCoachPrompt(summary, language) {
     const outputLanguage = language === "ko" ? "Korean" : "English";
+    const languageInstructions = language === "ko" ? [
+        "Write fluent, natural Korean used by a Korean aim-training coach. Avoid literal translations from English.",
+        "This data is from one completed aim-training game session, not running exercise and not a daily report.",
+        "Refer to the completed session as '\uc774\ubc88 \ud310' or '\uc774\ubc88 \uc5f0\uc2b5'. Refer to the next session as '\ub2e4\uc74c \ud310' or '\ub2e4\uc74c \uc5f0\uc2b5'.",
+        "Use these Korean gaming terms when relevant: score = '\uc810\uc218', accuracy = '\uba85\uc911\ub960', hits = '\uba85\uc911 \ud69f\uc218', shots = '\ubc1c\uc0ac \ud69f\uc218', bestStreak = '\ucd5c\uace0 \uc5f0\uc18d \uba85\uc911', tracking accuracy = '\uc870\uc900 \uc720\uc9c0\uc728'.",
+        "Never use these awkward phrases: '\uc624\ub298\uc758 \ub4dc\ub9b4', '\uc624\ub298\uc758 \ub2ec\ub9ac\uae30', '\ub2ec\ub9ac\uae30 \uc810\uc218', '\ub7f0 \uc810\uc218', '\uc0f7 \uc131\uacf5\ub960', '\uc20f \uc131\uacf5\ub960'."
+    ] : [
+        "Use natural aim-training vocabulary.",
+        "This data is from one completed aim-training game session, not running exercise and not a daily report.",
+        "Refer to it as this session or this attempt. Refer to the next one as the next session."
+    ];
     return [
         "Act as an encouraging but practical aim-training coach running locally in a browser.",
         `Write the final feedback directly in ${outputLanguage}.`,
+        ...languageInstructions,
         "Return only the natural-language feedback. Do not return JSON, markdown, headings, or labels.",
         "Write one compact paragraph of exactly 4 sentences.",
         "Sentence 1: summarize the result using the single most relevant metric.",
