@@ -5,7 +5,7 @@
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>GOAT Range - Aim Trainer</title>
-    <link rel="stylesheet" href="style.css?v=20260531-basic-crosshair">
+    <link rel="stylesheet" href="style.css?v=20260603-purple-orange-themes">
 </head>
 
 <body>
@@ -13,29 +13,31 @@
         <button id="settings-btn" class="settings-btn" aria-label="Open settings" data-i18n="settings">Settings</button>
 
         <section id="start-screen" class="screen menu-screen">
-            <p class="eyebrow" data-i18n="eyebrow">3D AIM TRAINER</p>
-            <h1>GOAT RANGE</h1>
-            <div class="stat-strip" aria-label="best score">
-                <span data-i18n="best">BEST</span>
-                <strong id="high-score">0</strong>
-            </div>
-            <div class="mode-picker" aria-label="practice modes">
-                <span class="mode-picker-title" data-i18n="practiceMode">Practice Mode</span>
-                <div class="mode-grid">
-                    <button class="mode-card active" type="button" data-practice-mode="precision" aria-pressed="true">
-                        <strong data-i18n="modePrecision">Precision</strong>
-                        <span data-i18n="modePrecisionDesc">Small targets, slower pace, misses cost points.</span>
-                    </button>
-                    <button class="mode-card" type="button" data-practice-mode="reflex" aria-pressed="false">
-                        <strong data-i18n="modeReflex">Reflex</strong>
-                        <span data-i18n="modeReflexDesc">One target at a time for fast flicks.</span>
-                    </button>
-                    <button class="mode-card" type="button" data-practice-mode="tracking" aria-pressed="false">
-                        <strong data-i18n="modeTracking">Tracking</strong>
-                        <span data-i18n="modeTrackingDesc">Follow one small target with your aim. No clicks needed.</span>
-                    </button>
+            <header class="menu-header">
+                <h1>GOAT RANGE</h1>
+                <div class="mode-picker" aria-label="practice modes">
+                    <span class="mode-picker-title" data-i18n="practiceMode">Practice Mode</span>
+                    <div class="mode-grid">
+                        <button class="mode-card active" type="button" data-practice-mode="precision" aria-pressed="true">
+                            <strong data-i18n="modePrecision">Precision</strong>
+                            <span data-i18n="modePrecisionDesc">Small targets, slower pace, misses cost points.</span>
+                        </button>
+                        <button class="mode-card" type="button" data-practice-mode="reflex" aria-pressed="false">
+                            <strong data-i18n="modeReflex">Reflex</strong>
+                            <span data-i18n="modeReflexDesc">One target at a time for fast flicks.</span>
+                        </button>
+                        <button class="mode-card" type="button" data-practice-mode="tracking" aria-pressed="false">
+                            <strong data-i18n="modeTracking">Tracking</strong>
+                            <span data-i18n="modeTrackingDesc">Follow one small target with your aim. No clicks needed.</span>
+                        </button>
+                    </div>
                 </div>
-                <div class="mode-options">
+            </header>
+
+            <div class="menu-dashboard">
+                <section class="mode-settings-panel" aria-labelledby="mode-settings-title">
+                    <h2 id="mode-settings-title" class="dashboard-panel-title" data-i18n="modeSettings">Mode Settings</h2>
+                    <div class="mode-options">
                     <div class="mode-option-panel" data-mode-options="precision">
                         <label class="mode-option-field">
                             <span data-i18n="ballSize">Ball Size</span>
@@ -58,6 +60,10 @@
                                 <input id="precision-duration-range" type="range" min="15" max="180" step="5">
                             </div>
                         </label>
+                        <label class="mode-option-field">
+                            <span data-i18n="ballColor">Ball Color</span>
+                            <input id="precision-color" class="mode-color-input" type="color">
+                        </label>
                         <button class="mode-option-reset" type="button" data-reset-mode="precision"
                             data-i18n="resetModeSettings">Reset Mode Settings</button>
                     </div>
@@ -68,6 +74,10 @@
                                 <input id="reflex-duration-value" type="number" min="15" max="180" step="5">
                                 <input id="reflex-duration-range" type="range" min="15" max="180" step="5">
                             </div>
+                        </label>
+                        <label class="mode-option-field">
+                            <span data-i18n="ballColor">Ball Color</span>
+                            <input id="reflex-color" class="mode-color-input" type="color">
                         </label>
                         <button class="mode-option-reset" type="button" data-reset-mode="reflex"
                             data-i18n="resetModeSettings">Reset Mode Settings</button>
@@ -101,13 +111,33 @@
                                 <option value="random" data-i18n="movementRandom">Horizontal + Vertical Random</option>
                             </select>
                         </label>
+                        <label class="mode-option-field">
+                            <span data-i18n="ballColor">Ball Color</span>
+                            <input id="tracking-color" class="mode-color-input" type="color">
+                        </label>
                         <button class="mode-option-reset" type="button" data-reset-mode="tracking"
                             data-i18n="resetModeSettings">Reset Mode Settings</button>
                     </div>
                 </div>
+                    <p id="practice-settings-warning" class="practice-settings-warning hidden" role="status"></p>
+                    <button id="start-btn" class="primary-btn" data-i18n="startDrill">Start Drill</button>
+                    <p id="support-message" class="support-message" role="status"></p>
+                </section>
+
+                <section class="leaderboard-panel menu-leaderboard-panel" aria-labelledby="leaderboard-heading">
+                    <div class="leaderboard-heading-row">
+                        <h2 id="leaderboard-heading" data-i18n="leaderboard">Leaderboard</h2>
+                        <div class="stat-strip" aria-label="best score">
+                            <span data-i18n="best">BEST</span>
+                            <strong id="high-score">0</strong>
+                        </div>
+                    </div>
+                    <p id="leaderboard-status" class="leaderboard-status" role="status" data-i18n="leaderboardLoading">
+                        Loading leaderboard...
+                    </p>
+                    <ol id="leaderboard-list" class="leaderboard-list"></ol>
+                </section>
             </div>
-            <button id="start-btn" class="primary-btn" data-i18n="startDrill">Start Drill</button>
-            <p id="support-message" class="support-message" role="status"></p>
         </section>
 
         <div id="settings-overlay" class="settings-overlay hidden" role="dialog" aria-modal="true"
@@ -141,7 +171,14 @@
                             <option value="auto" data-i18n="themeAuto">Auto</option>
                             <option value="dark" data-i18n="themeDark">Dark</option>
                             <option value="light" data-i18n="themeLight">Light</option>
+                            <option value="purple-orange-dark" data-i18n="themePurpleOrangeDark">Purple + Orange Dark</option>
+                            <option value="purple-orange-light" data-i18n="themePurpleOrangeLight">Purple + Orange Light</option>
                         </select>
+                    </label>
+                    <label class="toggle-row span-2">
+                        <span data-i18n="soundEffects">Sound Effects</span>
+                        <input id="sound-effects" type="checkbox">
+                        <i aria-hidden="true"></i>
                     </label>
                 </div>
 
@@ -521,13 +558,34 @@
                     <strong id="final-high-score">0</strong>
                 </div>
             </div>
+            <section class="result-mode-settings" aria-label="mode settings">
+                <div id="result-mode-settings-list" class="result-mode-settings-list"></div>
+            </section>
+            <section class="leaderboard-submit" aria-labelledby="leaderboard-submit-title">
+                <div class="leaderboard-preference-heading">
+                    <span id="leaderboard-submit-title" data-i18n="leaderboard">Leaderboard</span>
+                    <label class="leaderboard-auto-submit-toggle" data-i18n-aria-label="leaderboardAutoSubmit">
+                        <input id="leaderboard-auto-submit" type="checkbox">
+                        <i aria-hidden="true"></i>
+                    </label>
+                </div>
+                <label class="leaderboard-name-field">
+                    <span data-i18n="nickname">Nickname</span>
+                    <input id="leaderboard-player-name" type="text" minlength="2" maxlength="16" autocomplete="nickname">
+                </label>
+                <p id="leaderboard-submit-status" class="leaderboard-submit-status" role="status"></p>
+            </section>
             <section class="nano-feedback" aria-labelledby="nano-feedback-title" aria-live="polite">
                 <div class="nano-feedback-heading">
+                    <span class="nano-feedback-mark" aria-hidden="true"><i></i></span>
                     <span id="nano-feedback-title" data-i18n="nanoCoach">Gemini Nano</span>
                 </div>
-                <p id="nano-feedback-status" class="nano-feedback-status" data-i18n="nanoPreparing">
-                    Preparing local feedback...
-                </p>
+                <div class="nano-feedback-status-row">
+                    <p id="nano-feedback-status" class="nano-feedback-status" data-i18n="nanoPreparing">
+                        Preparing local feedback...
+                    </p>
+                    <span class="nano-feedback-dots" aria-hidden="true"><i></i><i></i><i></i></span>
+                </div>
                 <p id="nano-feedback-text" class="nano-feedback-text hidden"></p>
                 <button id="nano-feedback-retry" class="secondary-btn nano-feedback-retry hidden" type="button"
                     data-i18n="nanoRetry">Try Nano Again</button>
@@ -536,7 +594,7 @@
         </section>
     </main>
 
-    <script type="module" src="script.js?v=20260531-basic-crosshair"></script>
+    <script type="module" src="script.js?v=20260603-purple-orange-themes"></script>
 </body>
 
 </html>

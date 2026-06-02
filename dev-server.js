@@ -70,6 +70,39 @@ function serveFile(req, res) {
   });
 }
 
+async function serveNetlifyFunction(req, res) {
+  const requestUrl = new URL(req.url, `http://${req.headers.host || "localhost"}`);
+  const functionName = requestUrl.pathname.replace("/.netlify/functions/", "");
+  const functionPath = path.join(root, "netlify", "functions", `${functionName}.js`);
+
+  if (!/^[a-z0-9-]+$/i.test(functionName) || !fs.existsSync(functionPath)) {
+    send(res, 404, "Not Found");
+    return;
+  }
+
+  const bodyChunks = [];
+  for await (const chunk of req) {
+    bodyChunks.push(chunk);
+  }
+
+  try {
+    delete require.cache[require.resolve(functionPath)];
+    const { handler } = require(functionPath);
+    const result = await handler({
+      httpMethod: req.method,
+      headers: req.headers,
+      queryStringParameters: Object.fromEntries(requestUrl.searchParams),
+      body: Buffer.concat(bodyChunks).toString("utf8")
+    });
+    send(res, result.statusCode || 200, result.body || "", result.headers || {});
+  } catch (error) {
+    console.error("Local Netlify function failed:", error);
+    send(res, 500, JSON.stringify({ error: "server_error" }), {
+      "Content-Type": "application/json; charset=utf-8"
+    });
+  }
+}
+
 const server = http.createServer((req, res) => {
   if (req.url === "/__live-reload") {
     res.writeHead(200, {
@@ -80,6 +113,11 @@ const server = http.createServer((req, res) => {
     res.write("\n");
     clients.add(res);
     req.on("close", () => clients.delete(res));
+    return;
+  }
+
+  if (req.url.startsWith("/.netlify/functions/")) {
+    void serveNetlifyFunction(req, res);
     return;
   }
 

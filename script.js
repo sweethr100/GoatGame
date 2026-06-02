@@ -1,6 +1,9 @@
 const MAX_TARGET_COUNT = 10;
+const LEADERBOARD_ENDPOINT = "/.netlify/functions/leaderboard";
 const TRACKING_TONE_INTERVAL_MS = 180;
 const RESTART_UNLOCK_DELAY_MS = 1500;
+const NANO_FEEDBACK_MAX_SENTENCES = 4;
+const NANO_FEEDBACK_MAX_CHARACTERS = 720;
 const TRACKING_DIRECTION_CHANGE_SECONDS = [0.28, 0.95];
 const TAU = Math.PI * 2;
 const MAX_ABS_YAW = TAU * 1000;
@@ -108,18 +111,24 @@ const DEFAULT_CROSSHAIR = {
     outline: 1,
     dotSize: 6
 };
+const DEFAULT_BALL_COLOR = "#67e8f9";
 const SUPPORTED_LANGUAGES = ["ko", "en"];
 const TRACKING_MOVEMENT_TYPES = ["horizontal", "random"];
 const PRACTICE_SETTINGS_DEFAULTS = {
-    precision: { radius: 0.18, targetCount: 3, duration: 60 },
-    reflex: { duration: 30 },
-    tracking: { speed: 1.25, radius: 0.18, duration: 60, movement: "random" }
+    precision: { radius: 0.18, targetCount: 3, duration: 40, color: DEFAULT_BALL_COLOR },
+    reflex: { duration: 40, color: DEFAULT_BALL_COLOR },
+    tracking: { speed: 1.25, radius: 0.18, duration: 40, movement: "random", color: DEFAULT_BALL_COLOR }
+};
+const LEADERBOARD_SETTING_KEYS = {
+    precision: ["radius", "targetCount", "duration"],
+    reflex: ["duration"],
+    tracking: ["speed", "radius", "duration", "movement"]
 };
 const PRACTICE_MODES = {
     precision: {
         labelKey: "modePrecision",
         descKey: "modePrecisionDesc",
-        duration: 60,
+        duration: 40,
         targetCount: 3,
         radius: [0.14, 0.24],
         velocity: [0.25, 0.18, 0.16],
@@ -129,7 +138,7 @@ const PRACTICE_MODES = {
     reflex: {
         labelKey: "modeReflex",
         descKey: "modeReflexDesc",
-        duration: 30,
+        duration: 40,
         targetCount: 1,
         radius: [0.28, 0.46],
         velocity: [0.08, 0.06, 0.05],
@@ -139,7 +148,7 @@ const PRACTICE_MODES = {
     tracking: {
         labelKey: "modeTracking",
         descKey: "modeTrackingDesc",
-        duration: 60,
+        duration: 40,
         targetCount: 1,
         radius: [0.14, 0.24],
         velocity: [1.25, 0.78, 0],
@@ -153,11 +162,12 @@ const I18N = {
     en: {
         title: "GOAT Range - Aim Trainer",
         settings: "Settings",
-        eyebrow: "3D AIM TRAINER",
         best: "Best",
         startDrill: "Start Drill",
         practiceMode: "Practice Mode",
+        modeSettings: "Mode Settings",
         ballSize: "Ball Size",
+        ballColor: "Ball Color",
         maxBallCount: "Max Ball Count",
         gameDuration: "Game Time",
         ballSpeed: "Ball Speed",
@@ -181,6 +191,9 @@ const I18N = {
         themeAuto: "Auto",
         themeDark: "Dark",
         themeLight: "Light",
+        themePurpleOrangeDark: "Purple + Orange Dark",
+        themePurpleOrangeLight: "Purple + Orange Light",
+        soundEffects: "Sound Effects",
         fullscreenHint: "Press F11 to switch browser fullscreen on or off.",
         showFps: "Show FPS",
         fov: "FOV (16:9 Horizontal)",
@@ -258,6 +271,19 @@ const I18N = {
         backToMenu: "Back to Menu",
         drillComplete: "DRILL COMPLETE",
         runItBack: "Run It Back",
+        leaderboard: "Leaderboard",
+        leaderboardLoading: "Loading leaderboard...",
+        leaderboardEmpty: "No scores have been submitted yet.",
+        leaderboardUnavailable: "Could not connect to the leaderboard.",
+        leaderboardAutoSubmit: "Auto Submit",
+        leaderboardAutoSubmitOff: "This run will not be added to the leaderboard.",
+        customSettingsLeaderboardBlocked: "Custom mode settings cannot be added to the leaderboard. Reset the mode settings to submit scores.",
+        nickname: "Nickname",
+        scoreSubmitting: "Submitting score...",
+        scoreSubmitted: "Score submitted to the leaderboard.",
+        invalidNickname: "Enter a nickname between 2 and 16 characters.",
+        scoreSubmitFailed: "Could not submit the score.",
+        scoreRateLimited: "Too many scores were submitted. Please try again later.",
         nanoCoach: "Gemini Nano",
         nanoPreparing: "Preparing local feedback...",
         nanoDownloading: "Downloading Gemini Nano... {progress}",
@@ -277,11 +303,12 @@ const I18N = {
     ko: {
         title: "GOAT Range - \uc5d0\uc784 \ud2b8\ub808\uc774\ub108",
         settings: "\uc124\uc815",
-        eyebrow: "3D \uc5d0\uc784 \ud2b8\ub808\uc774\ub108",
         best: "\ucd5c\uace0 \uae30\ub85d",
         startDrill: "\ud6c8\ub828 \uc2dc\uc791",
         practiceMode: "\uc5f0\uc2b5 \ubaa8\ub4dc",
+        modeSettings: "\ubaa8\ub4dc \uc138\ubd80 \uc124\uc815",
         ballSize: "\uacf5 \ud06c\uae30",
+        ballColor: "\uacf5 \uc0c9\uc0c1",
         maxBallCount: "\ucd5c\ub300 \uacf5 \uac1c\uc218",
         gameDuration: "\uac8c\uc784 \uc2dc\uac04",
         ballSpeed: "\uacf5 \uc18d\ub3c4",
@@ -305,6 +332,9 @@ const I18N = {
         themeAuto: "\uc790\ub3d9",
         themeDark: "\ub2e4\ud06c",
         themeLight: "\ub77c\uc774\ud2b8",
+        themePurpleOrangeDark: "\ub0a8\ubcf4\ub77c\u00b7\uc8fc\ud669 \ub2e4\ud06c",
+        themePurpleOrangeLight: "\ub0a8\ubcf4\ub77c\u00b7\uc8fc\ud669 \ub77c\uc774\ud2b8",
+        soundEffects: "\ud6a8\uacfc\uc74c",
         fullscreenHint: "\uc804\uccb4\ud654\uba74\uc740 F11\ud0a4\ub85c \uc9c1\uc811 \ucf1c\uac70\ub098 \ub044\uc138\uc694.",
         showFps: "FPS \ud45c\uc2dc",
         fov: "FOV (16:9 \uac00\ub85c)",
@@ -382,6 +412,19 @@ const I18N = {
         backToMenu: "\uba54\ub274\ub85c \ub3cc\uc544\uac00\uae30",
         drillComplete: "\ud6c8\ub828 \uc885\ub8cc",
         runItBack: "\ub2e4\uc2dc \ud558\uae30",
+        leaderboard: "\ub9ac\ub354\ubcf4\ub4dc",
+        leaderboardLoading: "\ub9ac\ub354\ubcf4\ub4dc\ub97c \ubd88\ub7ec\uc624\ub294 \uc911...",
+        leaderboardEmpty: "\uc544\uc9c1 \ub4f1\ub85d\ub41c \uae30\ub85d\uc774 \uc5c6\uc2b5\ub2c8\ub2e4.",
+        leaderboardUnavailable: "\ub9ac\ub354\ubcf4\ub4dc\uc5d0 \uc5f0\uacb0\ud560 \uc218 \uc5c6\uc2b5\ub2c8\ub2e4.",
+        leaderboardAutoSubmit: "\uc790\ub3d9 \ub4f1\ub85d",
+        leaderboardAutoSubmitOff: "\uc774 \uae30\ub85d\uc740 \ub9ac\ub354\ubcf4\ub4dc\uc5d0 \uc62c\ub77c\uac00\uc9c0 \uc54a\uc2b5\ub2c8\ub2e4.",
+        customSettingsLeaderboardBlocked: "\ubaa8\ub4dc \uc138\ubd80 \uc124\uc815\uc744 \ubcc0\uacbd\ud558\uba74 \ub9ac\ub354\ubcf4\ub4dc\uc5d0 \uae30\ub85d\uc744 \ub4f1\ub85d\ud560 \uc218 \uc5c6\uc2b5\ub2c8\ub2e4. \ub4f1\ub85d\ud558\ub824\uba74 \ubaa8\ub4dc \uc124\uc815\uc744 \ucd08\uae30\ud654\ud574 \uc8fc\uc138\uc694.",
+        nickname: "\ub2c9\ub124\uc784",
+        scoreSubmitting: "\uc810\uc218\ub97c \ub4f1\ub85d\ud558\ub294 \uc911...",
+        scoreSubmitted: "\ub9ac\ub354\ubcf4\ub4dc\uc5d0 \ub4f1\ub85d\ud588\uc2b5\ub2c8\ub2e4.",
+        invalidNickname: "\ub2c9\ub124\uc784\uc740 2~16\uc790\ub85c \uc785\ub825\ud574 \uc8fc\uc138\uc694.",
+        scoreSubmitFailed: "\uc810\uc218\ub97c \ub4f1\ub85d\ud558\uc9c0 \ubabb\ud588\uc2b5\ub2c8\ub2e4.",
+        scoreRateLimited: "\uc810\uc218\ub97c \ub108\ubb34 \uc790\uc8fc \ub4f1\ub85d\ud588\uc2b5\ub2c8\ub2e4. \uc7a0\uc2dc \ud6c4 \ub2e4\uc2dc \uc2dc\ub3c4\ud574 \uc8fc\uc138\uc694.",
         nanoCoach: "Gemini Nano",
         nanoPreparing: "\ub85c\uceec \ud53c\ub4dc\ubc31\uc744 \uc900\ube44\ud558\ub294 \uc911...",
         nanoDownloading: "Gemini Nano\ub97c \ub2e4\uc6b4\ub85c\ub4dc\ud558\ub294 \uc911... {progress}",
@@ -404,16 +447,19 @@ const practiceSettings = {
     precision: {
         radius: readBoundedNumberSetting("goatRangePrecisionRadius", PRACTICE_SETTINGS_DEFAULTS.precision.radius, 0.08, 0.42),
         targetCount: Math.round(readBoundedNumberSetting("goatRangePrecisionTargetCount", PRACTICE_SETTINGS_DEFAULTS.precision.targetCount, 1, MAX_TARGET_COUNT)),
-        duration: Math.round(readBoundedNumberSetting("goatRangePrecisionDuration", PRACTICE_SETTINGS_DEFAULTS.precision.duration, 15, 180))
+        duration: Math.round(readBoundedNumberSetting("goatRangePrecisionDuration", PRACTICE_SETTINGS_DEFAULTS.precision.duration, 15, 180)),
+        color: readColorSetting("goatRangePrecisionColor", PRACTICE_SETTINGS_DEFAULTS.precision.color)
     },
     reflex: {
-        duration: Math.round(readBoundedNumberSetting("goatRangeReflexDuration", PRACTICE_SETTINGS_DEFAULTS.reflex.duration, 15, 180))
+        duration: Math.round(readBoundedNumberSetting("goatRangeReflexDuration", PRACTICE_SETTINGS_DEFAULTS.reflex.duration, 15, 180)),
+        color: readColorSetting("goatRangeReflexColor", PRACTICE_SETTINGS_DEFAULTS.reflex.color)
     },
     tracking: {
         speed: readBoundedNumberSetting("goatRangeTrackingSpeed", PRACTICE_SETTINGS_DEFAULTS.tracking.speed, 0.2, 3),
         radius: readBoundedNumberSetting("goatRangeTrackingRadius", PRACTICE_SETTINGS_DEFAULTS.tracking.radius, 0.08, 0.42),
         duration: Math.round(readBoundedNumberSetting("goatRangeTrackingDuration", PRACTICE_SETTINGS_DEFAULTS.tracking.duration, 15, 180)),
-        movement: readTrackingMovementSetting()
+        movement: readTrackingMovementSetting(),
+        color: readColorSetting("goatRangeTrackingColor", PRACTICE_SETTINGS_DEFAULTS.tracking.color)
     }
 };
 
@@ -431,6 +477,11 @@ const dom = {
     gameScreen: document.getElementById("game-screen"),
     resultScreen: document.getElementById("result-screen"),
     settingsBtn: document.getElementById("settings-btn"),
+    leaderboardStatus: document.getElementById("leaderboard-status"),
+    leaderboardList: document.getElementById("leaderboard-list"),
+    leaderboardPlayerName: document.getElementById("leaderboard-player-name"),
+    leaderboardAutoSubmit: document.getElementById("leaderboard-auto-submit"),
+    leaderboardSubmitStatus: document.getElementById("leaderboard-submit-status"),
     settingsOverlay: document.getElementById("settings-overlay"),
     settingsCloseBtn: document.getElementById("settings-close-btn"),
     settingsGeneralTab: document.getElementById("settings-general-tab"),
@@ -443,6 +494,7 @@ const dom = {
     settingsMousePanel: document.getElementById("settings-mouse-panel"),
     languageSelect: document.getElementById("language-select"),
     themeSelect: document.getElementById("theme-select"),
+    soundEffects: document.getElementById("sound-effects"),
     showFps: document.getElementById("show-fps"),
     fovValue: document.getElementById("fov-value"),
     fovRange: document.getElementById("fov-range"),
@@ -521,8 +573,10 @@ const dom = {
     precisionTargetCountRange: document.getElementById("precision-target-count-range"),
     precisionDurationValue: document.getElementById("precision-duration-value"),
     precisionDurationRange: document.getElementById("precision-duration-range"),
+    precisionColor: document.getElementById("precision-color"),
     reflexDurationValue: document.getElementById("reflex-duration-value"),
     reflexDurationRange: document.getElementById("reflex-duration-range"),
+    reflexColor: document.getElementById("reflex-color"),
     trackingSpeedValue: document.getElementById("tracking-speed-value"),
     trackingSpeedRange: document.getElementById("tracking-speed-range"),
     trackingRadiusValue: document.getElementById("tracking-radius-value"),
@@ -530,6 +584,8 @@ const dom = {
     trackingDurationValue: document.getElementById("tracking-duration-value"),
     trackingDurationRange: document.getElementById("tracking-duration-range"),
     trackingMovement: document.getElementById("tracking-movement"),
+    trackingColor: document.getElementById("tracking-color"),
+    practiceSettingsWarning: document.getElementById("practice-settings-warning"),
     startBtn: document.getElementById("start-btn"),
     restartBtn: document.getElementById("restart-btn"),
     pauseBtn: document.getElementById("pause-btn"),
@@ -557,6 +613,8 @@ const dom = {
     finalScore: document.getElementById("final-score"),
     finalAccuracy: document.getElementById("final-accuracy"),
     finalHighScore: document.getElementById("final-high-score"),
+    resultModeSettingsList: document.getElementById("result-mode-settings-list"),
+    nanoFeedback: document.querySelector(".nano-feedback"),
     nanoFeedbackStatus: document.getElementById("nano-feedback-status"),
     nanoFeedbackText: document.getElementById("nano-feedback-text"),
     nanoFeedbackRetry: document.getElementById("nano-feedback-retry"),
@@ -635,6 +693,8 @@ const settings = {
     practiceMode: readPracticeModeSetting(),
     languageMode: readLanguageSetting(),
     themeMode: readThemeSetting(),
+    soundEffects: localStorage.getItem("goatRangeSoundEffects") !== "false",
+    leaderboardAutoSubmit: localStorage.getItem("goatRangeLeaderboardAutoSubmit") === "true",
     showFps: localStorage.getItem("goatRangeShowFps") === "true",
     fov: readNumberSetting("goatRangeFov", DEFAULT_HORIZONTAL_FOV),
     crosshairPreset: readCrosshairPreset(),
@@ -711,9 +771,18 @@ let nanoFeedbackStatusKey = "nanoPreparing";
 let nanoFeedbackStatusValue = "";
 let lastNanoFeedback = null;
 let lastDrillSummary = null;
+let lastCompletedDrillSummary = null;
+let leaderboardMode = settings.practiceMode;
+let leaderboardRequestId = 0;
+let leaderboardStatusKey = "leaderboardLoading";
+let leaderboardSubmitStatusKey = "";
+const leaderboardScoresByMode = new Map();
 syncModeUi(false);
+dom.leaderboardPlayerName.value = localStorage.getItem("goatRangeLeaderboardName") || "";
+dom.leaderboardAutoSubmit.checked = settings.leaderboardAutoSubmit;
 dom.languageSelect.value = settings.languageMode;
 dom.themeSelect.value = settings.themeMode;
+dom.soundEffects.checked = settings.soundEffects;
 dom.showFps.checked = settings.showFps;
 dom.fovValue.value = String(settings.fov);
 dom.fovRange.value = String(settings.fov);
@@ -744,6 +813,7 @@ syncFovUi(false);
 syncCrosshairUi(false);
 syncSensitivityUi(false);
 void loadPersistedCrosshairImage();
+void loadLeaderboard(settings.practiceMode);
 
 init();
 void checkNanoCoachAvailability();
@@ -907,6 +977,9 @@ function startGame() {
     state.ignoreMouseUntil = 0;
     state.suppressShootUntil = 0;
     state.targets = Array.from({ length: mode.targetCount }, () => createTarget());
+    lastCompletedDrillSummary = null;
+    syncLeaderboardAutoSubmitAvailability();
+    setLeaderboardSubmitStatus();
     resetNanoFeedbackUi();
     updateForward();
     updateHud();
@@ -943,6 +1016,8 @@ function stopGame() {
 
 function endGame() {
     stopGame();
+    const drillSummary = getDrillSummary();
+    lastCompletedDrillSummary = drillSummary;
     highScore = Math.max(highScore, state.score);
     localStorage.setItem(getHighScoreKey(settings.practiceMode), String(highScore));
 
@@ -950,6 +1025,8 @@ function endGame() {
     dom.finalAccuracy.textContent = `${getAccuracy()}%`;
     dom.finalHighScore.textContent = highScore;
     dom.highScore.textContent = highScore;
+    renderResultModeSettings(drillSummary);
+    syncLeaderboardAutoSubmitAvailability(drillSummary);
     dom.gameScreen.classList.add("hidden");
     dom.resultScreen.classList.remove("hidden");
     window.clearTimeout(restartUnlockTimer);
@@ -957,7 +1034,14 @@ function endGame() {
     restartUnlockTimer = window.setTimeout(() => {
         dom.restartBtn.disabled = false;
     }, RESTART_UNLOCK_DELAY_MS);
-    void generateNanoFeedback(getDrillSummary());
+    if (!isLeaderboardEligibleSummary(drillSummary)) {
+        setLeaderboardSubmitStatus("customSettingsLeaderboardBlocked");
+    } else if (settings.leaderboardAutoSubmit) {
+        void submitLeaderboardScore(drillSummary);
+    } else {
+        setLeaderboardSubmitStatus("leaderboardAutoSubmitOff");
+    }
+    void generateNanoFeedback(drillSummary);
 }
 
 function update(delta) {
@@ -1001,6 +1085,7 @@ function getDrillSummary() {
     const mode = getPracticeMode();
     return {
         mode: settings.practiceMode,
+        options: { ...practiceSettings[settings.practiceMode] },
         score: state.score,
         accuracy: getAccuracy(),
         hits: state.hits,
@@ -1012,12 +1097,189 @@ function getDrillSummary() {
     };
 }
 
+function renderResultModeSettings(summary) {
+    const mode = PRACTICE_MODES[summary?.mode] || PRACTICE_MODES[DEFAULT_MODE];
+    const options = summary?.options || {};
+    const entries = [[t("practiceMode"), t(mode.labelKey)]];
+
+    if (summary?.mode === "precision") {
+        entries.push(
+            [t("ballSize"), String(options.radius)],
+            [t("maxBallCount"), String(options.targetCount)],
+            [t("gameDuration"), `${options.duration}s`]
+        );
+    } else if (summary?.mode === "reflex") {
+        entries.push(
+            [t("gameDuration"), `${options.duration}s`]
+        );
+    } else {
+        entries.push(
+            [t("ballSpeed"), String(options.speed)],
+            [t("ballSize"), String(options.radius)],
+            [t("gameDuration"), `${options.duration}s`],
+            [t("movementType"), t(options.movement === "horizontal" ? "movementHorizontal" : "movementRandom")]
+        );
+    }
+
+    dom.resultModeSettingsList.replaceChildren();
+    entries.forEach(([labelText, valueText]) => {
+        const item = document.createElement("div");
+        const label = document.createElement("span");
+        const value = document.createElement("strong");
+        label.textContent = labelText;
+        value.textContent = valueText;
+        item.append(label, value);
+        dom.resultModeSettingsList.append(item);
+    });
+}
+
+function setLeaderboardStatus(key = "") {
+    leaderboardStatusKey = key;
+    dom.leaderboardStatus.textContent = key ? t(key) : "";
+    dom.leaderboardStatus.classList.toggle("hidden", !key);
+}
+
+function setLeaderboardSubmitStatus(key = "") {
+    leaderboardSubmitStatusKey = key;
+    dom.leaderboardSubmitStatus.textContent = key ? t(key) : "";
+}
+
+function renderLeaderboardScores(scores = leaderboardScoresByMode.get(leaderboardMode) || []) {
+    dom.leaderboardList.replaceChildren();
+
+    if (scores.length === 0) {
+        setLeaderboardStatus("leaderboardEmpty");
+        return;
+    }
+
+    setLeaderboardStatus();
+    scores.forEach((entry) => {
+        const item = document.createElement("li");
+        const player = document.createElement("span");
+        const score = document.createElement("strong");
+        player.className = "leaderboard-player";
+        player.textContent = entry.player_name;
+        score.className = "leaderboard-score";
+        score.textContent = Number(entry.score).toLocaleString();
+        item.append(player, score);
+        dom.leaderboardList.append(item);
+    });
+}
+
+async function loadLeaderboard(mode = leaderboardMode) {
+    if (!PRACTICE_MODES[mode]) {
+        return;
+    }
+
+    const requestId = ++leaderboardRequestId;
+    leaderboardMode = mode;
+    setLeaderboardStatus("leaderboardLoading");
+
+    try {
+        const response = await fetch(`${LEADERBOARD_ENDPOINT}?mode=${encodeURIComponent(mode)}`);
+        if (!response.ok) {
+            throw new Error(`Leaderboard request failed with ${response.status}.`);
+        }
+        const data = await response.json();
+        if (requestId !== leaderboardRequestId || leaderboardMode !== mode) {
+            return;
+        }
+        const scores = Array.isArray(data.scores) ? data.scores : [];
+        leaderboardScoresByMode.set(mode, scores);
+        renderLeaderboardScores(scores);
+    } catch (error) {
+        console.warn("Leaderboard could not be loaded:", error);
+        if (requestId === leaderboardRequestId) {
+            dom.leaderboardList.replaceChildren();
+            setLeaderboardStatus("leaderboardUnavailable");
+        }
+    }
+}
+
+async function submitLeaderboardScore(summary = lastCompletedDrillSummary) {
+    const playerName = dom.leaderboardPlayerName.value.trim().replace(/\s+/g, " ");
+    const playerNameLength = Array.from(playerName).length;
+
+    if (!isLeaderboardEligibleSummary(summary)) {
+        setLeaderboardSubmitStatus("customSettingsLeaderboardBlocked");
+        return;
+    }
+
+    if (!summary || playerNameLength < 2 || playerNameLength > 16) {
+        setLeaderboardSubmitStatus("invalidNickname");
+        return;
+    }
+
+    localStorage.setItem("goatRangeLeaderboardName", playerName);
+    dom.leaderboardPlayerName.value = playerName;
+    setLeaderboardSubmitStatus("scoreSubmitting");
+
+    try {
+        const response = await fetch(LEADERBOARD_ENDPOINT, {
+            method: "POST",
+            headers: { "Content-Type": "application/json" },
+            body: JSON.stringify({ playerName, ...summary })
+        });
+        const data = await response.json().catch(() => ({}));
+
+        if (!response.ok) {
+            if (data.error === "rate_limited") {
+                setLeaderboardSubmitStatus("scoreRateLimited");
+                return;
+            }
+            throw new Error(`Leaderboard submission failed with ${response.status}.`);
+        }
+
+        leaderboardMode = summary.mode;
+        leaderboardScoresByMode.set(leaderboardMode, Array.isArray(data.scores) ? data.scores : []);
+        setLeaderboardSubmitStatus();
+    } catch (error) {
+        console.warn("Leaderboard score could not be submitted:", error);
+        setLeaderboardSubmitStatus("scoreSubmitFailed");
+    }
+}
+
+function saveLeaderboardNickname() {
+    const playerName = dom.leaderboardPlayerName.value.trim().replace(/\s+/g, " ");
+    const playerNameLength = Array.from(playerName).length;
+    if (playerNameLength === 0) {
+        dom.leaderboardPlayerName.value = "";
+        localStorage.removeItem("goatRangeLeaderboardName");
+        setLeaderboardSubmitStatus(getLeaderboardIdleSubmitStatusKey());
+        return;
+    }
+    if (playerNameLength < 2 || playerNameLength > 16) {
+        setLeaderboardSubmitStatus("invalidNickname");
+        return;
+    }
+
+    dom.leaderboardPlayerName.value = playerName;
+    localStorage.setItem("goatRangeLeaderboardName", playerName);
+    setLeaderboardSubmitStatus(getLeaderboardIdleSubmitStatusKey());
+}
+
+function syncLeaderboardAutoSubmit() {
+    if (dom.leaderboardAutoSubmit.disabled) {
+        syncLeaderboardAutoSubmitAvailability(lastCompletedDrillSummary);
+        setLeaderboardSubmitStatus("customSettingsLeaderboardBlocked");
+        return;
+    }
+    settings.leaderboardAutoSubmit = dom.leaderboardAutoSubmit.checked;
+    localStorage.setItem("goatRangeLeaderboardAutoSubmit", String(settings.leaderboardAutoSubmit));
+    setLeaderboardSubmitStatus(getLeaderboardIdleSubmitStatusKey());
+}
+
 function setNanoFeedbackStatus(key, value = "") {
     nanoFeedbackStatusKey = key;
     nanoFeedbackStatusValue = value;
     const message = t(key).replace("{progress}", value);
     dom.nanoFeedbackStatus.textContent = message;
     dom.nanoFeedbackStatus.classList.toggle("hidden", !message);
+    dom.nanoFeedback.classList.toggle(
+        "is-generating",
+        key === "nanoPreparing" || key === "nanoDownloading" || key === "nanoAnalyzing"
+    );
+    dom.nanoFeedback.classList.remove("is-ready", "is-streaming");
 }
 
 function clearNanoFeedbackStatus() {
@@ -1025,6 +1287,7 @@ function clearNanoFeedbackStatus() {
     nanoFeedbackStatusValue = "";
     dom.nanoFeedbackStatus.textContent = "";
     dom.nanoFeedbackStatus.classList.add("hidden");
+    dom.nanoFeedback.classList.remove("is-generating");
 }
 
 function resetNanoFeedbackUi() {
@@ -1034,6 +1297,7 @@ function resetNanoFeedbackUi() {
     dom.nanoFeedbackText.textContent = "";
     dom.nanoFeedbackText.classList.add("hidden");
     dom.nanoFeedbackRetry.classList.add("hidden");
+    dom.nanoFeedback.classList.remove("is-ready", "is-streaming");
     setNanoFeedbackStatus("nanoPreparing");
 }
 
@@ -1042,6 +1306,7 @@ function showNanoFeedbackFailure(key, canRetry = true) {
     dom.nanoFeedbackText.textContent = "";
     dom.nanoFeedbackText.classList.add("hidden");
     dom.nanoFeedbackRetry.classList.toggle("hidden", !canRetry);
+    dom.nanoFeedback.classList.remove("is-generating", "is-ready", "is-streaming");
 }
 
 async function checkNanoCoachAvailability() {
@@ -1102,17 +1367,104 @@ function buildNanoCoachPrompt(summary, language) {
         "Act as an encouraging but practical aim-training coach running locally in a browser.",
         `Write the final feedback directly in ${outputLanguage}.`,
         "Return only the natural-language feedback. Do not return JSON, markdown, headings, or labels.",
-        "Use 2 or 3 short sentences.",
-        "Mention the most relevant metric and give one concrete adjustment for the next run.",
+        "Write one compact paragraph of exactly 4 sentences.",
+        "Sentence 1: summarize the result using the single most relevant metric.",
+        "Sentence 2: mention one strength.",
+        "Sentence 3: identify one improvement area.",
+        "Sentence 4: give one concrete action for the next run.",
+        "Do not repeat a metric, observation, compliment, or recommendation.",
+        "Do not restate the result after sentence 1.",
+        "Never restart the paragraph or repeat an earlier sentence.",
+        "Keep the whole answer under 420 characters.",
+        "Stop immediately after sentence 4.",
         `Drill data: ${JSON.stringify(summary)}`
     ].join("\n");
 }
 
+function normalizeNanoFeedbackText(text) {
+    return String(text || "").replace(/\s+/g, " ").trim();
+}
+
+function splitNanoFeedbackSentences(text) {
+    const sentences = [];
+    let sentenceStart = 0;
+
+    for (let index = 0; index < text.length; index += 1) {
+        const character = text[index];
+        if (!".!?\u3002\uff01\uff1f".includes(character)) {
+            continue;
+        }
+        if (character === "." && /\d/.test(text[index - 1] || "") && /\d/.test(text[index + 1] || "")) {
+            continue;
+        }
+
+        while (text[index + 1] && ".!?\u3002\uff01\uff1f".includes(text[index + 1])) {
+            index += 1;
+        }
+        const sentence = text.slice(sentenceStart, index + 1).trim();
+        if (sentence) {
+            sentences.push(sentence);
+        }
+        sentenceStart = index + 1;
+    }
+
+    return {
+        sentences,
+        remainder: text.slice(sentenceStart).trim()
+    };
+}
+
+function sanitizeNanoFeedbackText(text) {
+    const normalizedText = normalizeNanoFeedbackText(text);
+    const { sentences: parsedSentences, remainder } = splitNanoFeedbackSentences(normalizedText);
+    const seenSentences = new Set();
+    const sentences = [];
+
+    for (const sentence of parsedSentences) {
+        const sentenceKey = sentence.toLocaleLowerCase();
+        if (seenSentences.has(sentenceKey) || sentences.length >= NANO_FEEDBACK_MAX_SENTENCES) {
+            return sentences.join(" ");
+        }
+        seenSentences.add(sentenceKey);
+        sentences.push(sentence);
+        if (sentences.length >= NANO_FEEDBACK_MAX_SENTENCES) {
+            return sentences.join(" ");
+        }
+    }
+
+    const sanitizedText = [...sentences, remainder].filter(Boolean).join(" ");
+    return sanitizedText.slice(0, NANO_FEEDBACK_MAX_CHARACTERS).trim();
+}
+
+function appendNanoFeedbackStreamChunk(text, chunk) {
+    const chunkText = String(chunk || "");
+    return chunkText.startsWith(text) ? chunkText : `${text}${chunkText}`;
+}
+
+function hasCompleteNanoFeedback(text) {
+    return splitNanoFeedbackSentences(normalizeNanoFeedbackText(text)).sentences.length >= NANO_FEEDBACK_MAX_SENTENCES;
+}
+
+function hasRepeatedNanoFeedback(rawText, sanitizedText) {
+    return normalizeNanoFeedbackText(rawText).length > normalizeNanoFeedbackText(sanitizedText).length + 48;
+}
+
 function renderNanoFeedback(feedback) {
+    dom.nanoFeedback.classList.remove("is-ready", "is-streaming");
     dom.nanoFeedbackText.textContent = feedback.text;
     dom.nanoFeedbackText.classList.remove("hidden");
     dom.nanoFeedbackRetry.classList.add("hidden");
     clearNanoFeedbackStatus();
+    void dom.nanoFeedback.offsetWidth;
+    dom.nanoFeedback.classList.add("is-ready");
+}
+
+function beginNanoFeedbackStream() {
+    clearNanoFeedbackStatus();
+    dom.nanoFeedback.classList.remove("is-ready");
+    dom.nanoFeedback.classList.add("is-streaming");
+    dom.nanoFeedbackText.textContent = "";
+    dom.nanoFeedbackText.classList.remove("hidden");
 }
 
 async function generateNanoFeedback(summary) {
@@ -1122,6 +1474,7 @@ async function generateNanoFeedback(summary) {
     dom.nanoFeedbackText.textContent = "";
     dom.nanoFeedbackText.classList.add("hidden");
     dom.nanoFeedbackRetry.classList.add("hidden");
+    dom.nanoFeedback.classList.remove("is-ready", "is-streaming");
 
     const session = await prepareNanoCoach();
     if (requestId !== nanoCoachRequestId || !session) {
@@ -1130,11 +1483,27 @@ async function generateNanoFeedback(summary) {
 
     setNanoFeedbackStatus("nanoAnalyzing");
     try {
-        const response = await session.prompt(buildNanoCoachPrompt(summary, language));
+        const stream = session.promptStreaming(buildNanoCoachPrompt(summary, language));
+        let rawText = "";
+        let text = "";
+        for await (const chunk of stream) {
+            if (requestId !== nanoCoachRequestId || language !== activeLanguage) {
+                return;
+            }
+            if (!rawText) {
+                beginNanoFeedbackStream();
+            }
+            rawText = appendNanoFeedbackStreamChunk(rawText, chunk);
+            text = sanitizeNanoFeedbackText(rawText);
+            dom.nanoFeedbackText.textContent = text;
+            if (hasCompleteNanoFeedback(text) || hasRepeatedNanoFeedback(rawText, text)) {
+                break;
+            }
+        }
         if (requestId !== nanoCoachRequestId || language !== activeLanguage) {
             return;
         }
-        const text = String(response).trim();
+        text = sanitizeNanoFeedbackText(text);
         if (!text) {
             throw new Error("Gemini Nano returned empty feedback.");
         }
@@ -1288,13 +1657,6 @@ function createTarget(previousPosition = null) {
         }
     }
 
-    const palette = [
-        [0.42, 0.91, 0.98, 1],
-        [0.75, 0.95, 0.36, 1],
-        [0.98, 0.45, 0.53, 1],
-        [0.98, 0.75, 0.22, 1],
-        [0.66, 0.58, 0.98, 1]
-    ];
     const baseRadius = randomRange(mode.radius[0], mode.radius[1]);
     return {
         position,
@@ -1307,7 +1669,7 @@ function createTarget(previousPosition = null) {
             ],
         baseRadius,
         radius: baseRadius,
-        color: palette[Math.floor(Math.random() * palette.length)],
+        color: hexToGpuColor(mode.color),
         age: Math.random() * 10,
         directionChangeIn: isTracking
             ? randomRange(TRACKING_DIRECTION_CHANGE_SECONDS[0], TRACKING_DIRECTION_CHANGE_SECONDS[1])
@@ -1333,7 +1695,7 @@ function updateForward() {
 }
 
 function getThemeRenderColors() {
-    if (document.documentElement.dataset.theme === "light") {
+    if (document.documentElement.dataset.theme?.endsWith("light")) {
         return {
             clear: { r: 0.84, g: 0.92, b: 0.95, a: 1 },
             arena: [0.72, 0.84, 0.88, 0],
@@ -1645,14 +2007,14 @@ function showToast(text, persistent = false) {
 }
 
 function ensureAudio() {
-    if (audio) {
+    if (!settings.soundEffects || audio) {
         return;
     }
     audio = new AudioContext();
 }
 
 function playTone(frequency, duration, type, volume) {
-    if (!audio) {
+    if (!settings.soundEffects || !audio) {
         return;
     }
     const oscillator = audio.createOscillator();
@@ -1666,6 +2028,25 @@ function playTone(frequency, duration, type, volume) {
     gain.connect(audio.destination);
     oscillator.start();
     oscillator.stop(audio.currentTime + duration + 0.02);
+}
+
+function playButtonClickSound(event) {
+    const button = event.target.closest?.("button");
+    if (!button || button.disabled || !settings.soundEffects) {
+        return;
+    }
+
+    ensureAudio();
+    if (!audio) {
+        return;
+    }
+
+    const play = () => playTone(420, 0.045, "triangle", 0.035);
+    if (audio.state === "suspended") {
+        void audio.resume().then(play).catch(() => {});
+        return;
+    }
+    play();
 }
 
 function openPauseMenu() {
@@ -1757,6 +2138,7 @@ function returnToStart() {
     dom.gameScreen.classList.add("hidden");
     dom.resultScreen.classList.add("hidden");
     dom.startScreen.classList.remove("hidden");
+    void loadLeaderboard(settings.practiceMode);
 }
 
 function requestAimLock() {
@@ -1804,17 +2186,19 @@ function getPracticeMode() {
             ...mode,
             duration: options.duration,
             targetCount: options.targetCount,
-            radius: [options.radius, options.radius]
+            radius: [options.radius, options.radius],
+            color: options.color
         };
     }
     if (modeKey === "reflex") {
-        return { ...mode, duration: options.duration };
+        return { ...mode, duration: options.duration, color: options.color };
     }
 
     return {
         ...mode,
         duration: options.duration,
         radius: [options.radius, options.radius],
+        color: options.color,
         velocity: options.movement === "horizontal"
             ? [options.speed, 0, 0]
             : [options.speed, options.speed * 0.62, 0]
@@ -1861,8 +2245,10 @@ function syncPracticeSettingsUi(shouldStore = true) {
     dom.precisionTargetCountRange.value = String(practiceSettings.precision.targetCount);
     dom.precisionDurationValue.value = String(practiceSettings.precision.duration);
     dom.precisionDurationRange.value = String(practiceSettings.precision.duration);
+    dom.precisionColor.value = practiceSettings.precision.color;
     dom.reflexDurationValue.value = String(practiceSettings.reflex.duration);
     dom.reflexDurationRange.value = String(practiceSettings.reflex.duration);
+    dom.reflexColor.value = practiceSettings.reflex.color;
     dom.trackingSpeedValue.value = String(practiceSettings.tracking.speed);
     dom.trackingSpeedRange.value = String(practiceSettings.tracking.speed);
     dom.trackingRadiusValue.value = String(practiceSettings.tracking.radius);
@@ -1870,6 +2256,8 @@ function syncPracticeSettingsUi(shouldStore = true) {
     dom.trackingDurationValue.value = String(practiceSettings.tracking.duration);
     dom.trackingDurationRange.value = String(practiceSettings.tracking.duration);
     dom.trackingMovement.value = practiceSettings.tracking.movement;
+    dom.trackingColor.value = practiceSettings.tracking.color;
+    syncPracticeSettingsWarning();
 
     if (!shouldStore) {
         return;
@@ -1878,18 +2266,66 @@ function syncPracticeSettingsUi(shouldStore = true) {
     localStorage.setItem("goatRangePrecisionRadius", String(practiceSettings.precision.radius));
     localStorage.setItem("goatRangePrecisionTargetCount", String(practiceSettings.precision.targetCount));
     localStorage.setItem("goatRangePrecisionDuration", String(practiceSettings.precision.duration));
+    localStorage.setItem("goatRangePrecisionColor", practiceSettings.precision.color);
     localStorage.setItem("goatRangeReflexDuration", String(practiceSettings.reflex.duration));
+    localStorage.setItem("goatRangeReflexColor", practiceSettings.reflex.color);
     localStorage.setItem("goatRangeTrackingSpeed", String(practiceSettings.tracking.speed));
     localStorage.setItem("goatRangeTrackingRadius", String(practiceSettings.tracking.radius));
     localStorage.setItem("goatRangeTrackingDuration", String(practiceSettings.tracking.duration));
     localStorage.setItem("goatRangeTrackingMovement", practiceSettings.tracking.movement);
+    localStorage.setItem("goatRangeTrackingColor", practiceSettings.tracking.color);
+}
+
+function arePracticeSettingValuesEqual(value, defaultValue) {
+    if (typeof defaultValue === "string") {
+        return String(value).toLowerCase() === defaultValue.toLowerCase();
+    }
+    return value === defaultValue;
+}
+
+function isPracticeSettingsDefault(modeKey, options = practiceSettings[modeKey]) {
+    const defaults = PRACTICE_SETTINGS_DEFAULTS[modeKey];
+    const leaderboardSettingKeys = LEADERBOARD_SETTING_KEYS[modeKey];
+    return Boolean(
+        defaults
+        && options
+        && leaderboardSettingKeys
+        && leaderboardSettingKeys.every((key) => (
+            arePracticeSettingValuesEqual(options[key], defaults[key])
+        ))
+    );
+}
+
+function isLeaderboardEligibleSummary(summary) {
+    return Boolean(summary && isPracticeSettingsDefault(summary.mode, summary.options));
+}
+
+function getLeaderboardIdleSubmitStatusKey() {
+    if (lastCompletedDrillSummary && !isLeaderboardEligibleSummary(lastCompletedDrillSummary)) {
+        return "customSettingsLeaderboardBlocked";
+    }
+    return settings.leaderboardAutoSubmit ? "" : "leaderboardAutoSubmitOff";
+}
+
+function syncLeaderboardAutoSubmitAvailability(summary = lastCompletedDrillSummary) {
+    const isBlocked = Boolean(summary && !isLeaderboardEligibleSummary(summary));
+    dom.leaderboardAutoSubmit.disabled = isBlocked;
+    dom.leaderboardAutoSubmit.checked = isBlocked ? false : settings.leaderboardAutoSubmit;
+    dom.leaderboardAutoSubmit.closest(".leaderboard-auto-submit-toggle")?.classList.toggle("is-disabled", isBlocked);
+}
+
+function syncPracticeSettingsWarning() {
+    const isDefault = isPracticeSettingsDefault(settings.practiceMode);
+    dom.practiceSettingsWarning.textContent = isDefault ? "" : t("customSettingsLeaderboardBlocked");
+    dom.practiceSettingsWarning.classList.toggle("hidden", isDefault);
 }
 
 function resetPracticeSettings(modeKey) {
     if (!PRACTICE_SETTINGS_DEFAULTS[modeKey] || !practiceSettings[modeKey]) {
         return;
     }
-    Object.assign(practiceSettings[modeKey], PRACTICE_SETTINGS_DEFAULTS[modeKey]);
+    const color = practiceSettings[modeKey].color;
+    Object.assign(practiceSettings[modeKey], PRACTICE_SETTINGS_DEFAULTS[modeKey], { color });
     syncPracticeSettingsUi();
 }
 
@@ -1919,6 +2355,15 @@ function bindPracticeRange(valueInput, rangeInput, modeKey, optionKey, min, max,
     rangeInput.addEventListener("input", () => update(rangeInput.value));
 }
 
+function bindPracticeColor(colorInput, modeKey) {
+    colorInput.addEventListener("input", () => {
+        practiceSettings[modeKey].color = /^#[0-9a-f]{6}$/i.test(colorInput.value)
+            ? colorInput.value
+            : PRACTICE_SETTINGS_DEFAULTS[modeKey].color;
+        syncPracticeSettingsUi();
+    });
+}
+
 function readLanguageSetting() {
     const language = localStorage.getItem("goatRangeLanguage");
     return language === "ko" || language === "en" || language === "auto" ? language : "auto";
@@ -1926,7 +2371,15 @@ function readLanguageSetting() {
 
 function readThemeSetting() {
     const theme = localStorage.getItem("goatRangeTheme");
-    return theme === "dark" || theme === "light" || theme === "auto" ? theme : "auto";
+    const migratedTheme = {
+        "purple-dark": "purple-orange-dark",
+        "orange-dark": "purple-orange-dark",
+        "purple-light": "purple-orange-light",
+        "orange-light": "purple-orange-light"
+    }[theme] || theme;
+    return ["auto", "dark", "light", "purple-orange-dark", "purple-orange-light"].includes(migratedTheme)
+        ? migratedTheme
+        : "auto";
 }
 
 function resolveLanguage(languageMode) {
@@ -1951,6 +2404,15 @@ function applyLanguage() {
     document.querySelectorAll("[data-i18n]").forEach((element) => {
         element.textContent = t(element.dataset.i18n);
     });
+    document.querySelectorAll("[data-i18n-aria-label]").forEach((element) => {
+        element.setAttribute("aria-label", t(element.dataset.i18nAriaLabel));
+    });
+    setLeaderboardStatus(leaderboardStatusKey);
+    setLeaderboardSubmitStatus(leaderboardSubmitStatusKey);
+    syncPracticeSettingsWarning();
+    if (lastCompletedDrillSummary) {
+        renderResultModeSettings(lastCompletedDrillSummary);
+    }
     setNanoFeedbackStatus(nanoFeedbackStatusKey, nanoFeedbackStatusValue);
     if (lastNanoFeedback?.language === activeLanguage) {
         renderNanoFeedback(lastNanoFeedback);
@@ -2004,6 +2466,16 @@ function hexToRgba(hex, alpha = 1) {
     const green = parseInt(value.slice(2, 4), 16);
     const blue = parseInt(value.slice(4, 6), 16);
     return `rgba(${red}, ${green}, ${blue}, ${clamp(alpha, 0, 1)})`;
+}
+
+function hexToGpuColor(hex) {
+    const value = /^#[0-9a-f]{6}$/i.test(hex) ? hex.slice(1) : DEFAULT_BALL_COLOR.slice(1);
+    return [
+        parseInt(value.slice(0, 2), 16) / 255,
+        parseInt(value.slice(2, 4), 16) / 255,
+        parseInt(value.slice(4, 6), 16) / 255,
+        1
+    ];
 }
 
 function getSettingsCrosshairProfile() {
@@ -2892,6 +3364,12 @@ function syncTheme() {
     applyTheme();
 }
 
+function syncSoundEffects() {
+    settings.soundEffects = dom.soundEffects.checked;
+    localStorage.setItem("goatRangeSoundEffects", String(settings.soundEffects));
+    ensureAudio();
+}
+
 function syncFpsUi(shouldStore = true) {
     dom.showFps.checked = settings.showFps;
     dom.fpsCounter.classList.toggle("hidden", !settings.showFps);
@@ -3017,8 +3495,10 @@ dom.modeButtons.forEach((button) => {
         }
         settings.practiceMode = button.dataset.practiceMode;
         syncModeUi();
+        void loadLeaderboard(settings.practiceMode);
     });
 });
+document.addEventListener("click", playButtonClickSound, true);
 dom.modeOptionResetButtons.forEach((button) => {
     button.addEventListener("click", () => resetPracticeSettings(button.dataset.resetMode));
 });
@@ -3029,6 +3509,9 @@ bindPracticeRange(dom.reflexDurationValue, dom.reflexDurationRange, "reflex", "d
 bindPracticeRange(dom.trackingSpeedValue, dom.trackingSpeedRange, "tracking", "speed", 0.2, 3);
 bindPracticeRange(dom.trackingRadiusValue, dom.trackingRadiusRange, "tracking", "radius", 0.08, 0.42);
 bindPracticeRange(dom.trackingDurationValue, dom.trackingDurationRange, "tracking", "duration", 15, 180, true);
+bindPracticeColor(dom.precisionColor, "precision");
+bindPracticeColor(dom.reflexColor, "reflex");
+bindPracticeColor(dom.trackingColor, "tracking");
 dom.trackingMovement.addEventListener("change", () => {
     practiceSettings.tracking.movement = TRACKING_MOVEMENT_TYPES.includes(dom.trackingMovement.value)
         ? dom.trackingMovement.value
@@ -3044,6 +3527,8 @@ dom.nanoFeedbackRetry.addEventListener("click", () => {
         void generateNanoFeedback(lastDrillSummary);
     }
 });
+dom.leaderboardAutoSubmit.addEventListener("change", syncLeaderboardAutoSubmit);
+dom.leaderboardPlayerName.addEventListener("input", saveLeaderboardNickname);
 dom.settingsBtn.addEventListener("click", () => openSettings(false));
 dom.settingsCloseBtn.addEventListener("click", closeSettings);
 dom.settingsGeneralTab.addEventListener("click", () => setSettingsTab("general"));
@@ -3057,6 +3542,7 @@ dom.settingsOverlay.addEventListener("click", (event) => {
 });
 dom.languageSelect.addEventListener("change", syncLanguage);
 dom.themeSelect.addEventListener("change", syncTheme);
+dom.soundEffects.addEventListener("change", syncSoundEffects);
 dom.showFps.addEventListener("change", () => {
     settings.showFps = dom.showFps.checked;
     syncFpsUi();
@@ -3382,6 +3868,7 @@ dom.restartBtn.addEventListener("click", () => {
     dom.resultScreen.classList.add("hidden");
     dom.startScreen.classList.remove("hidden");
     dom.settingsBtn.classList.remove("hidden");
+    void loadLeaderboard(settings.practiceMode);
 });
 
 dom.pauseBtn.addEventListener("click", (event) => {
@@ -3531,6 +4018,9 @@ document.addEventListener("keydown", (event) => {
                 openPauseMenu();
             }
             return;
+        }
+        if (!dom.startScreen.classList.contains("hidden")) {
+            openSettings(false);
         }
     }
     if (event.code === "Space" && state.active && !state.paused) {
