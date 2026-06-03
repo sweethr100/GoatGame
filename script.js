@@ -14,6 +14,7 @@ const DEFAULT_DPI = 800;
 const CM_PER_INCH = 2.54;
 const FOV_REFERENCE_ASPECT = 16 / 9;
 const DEFAULT_HORIZONTAL_FOV = 103;
+const TRACKING_TARGET_Z = -4.8;
 const CM360_AT_800_DPI = {
     valorant: 16.33791,
     overwatch: 173.18182,
@@ -115,9 +116,9 @@ const DEFAULT_BALL_COLOR = "#67e8f9";
 const SUPPORTED_LANGUAGES = ["ko", "en"];
 const TRACKING_MOVEMENT_TYPES = ["horizontal", "random"];
 const PRACTICE_SETTINGS_DEFAULTS = {
-    precision: { radius: 0.18, targetCount: 3, duration: 40, color: DEFAULT_BALL_COLOR },
+    precision: { radius: 0.09, targetCount: 3, duration: 40, color: DEFAULT_BALL_COLOR },
     reflex: { duration: 40, color: DEFAULT_BALL_COLOR },
-    tracking: { speed: 1.25, radius: 0.18, duration: 40, movement: "random", color: DEFAULT_BALL_COLOR }
+    tracking: { speed: 1.8, radius: 0.09, duration: 40, movement: "random", color: DEFAULT_BALL_COLOR }
 };
 const LEADERBOARD_SETTING_KEYS = {
     precision: ["radius", "targetCount", "duration"],
@@ -130,7 +131,7 @@ const PRACTICE_MODES = {
         descKey: "modePrecisionDesc",
         duration: 40,
         targetCount: 3,
-        radius: [0.14, 0.24],
+        radius: [0.07, 0.13],
         velocity: [0.25, 0.18, 0.16],
         scoreScale: 1.45,
         minRespawnDistance: 2.4
@@ -140,7 +141,7 @@ const PRACTICE_MODES = {
         descKey: "modeReflexDesc",
         duration: 40,
         targetCount: 1,
-        radius: [0.28, 0.46],
+        radius: [0.15, 0.25],
         velocity: [0.08, 0.06, 0.05],
         scoreScale: 1.9,
         minRespawnDistance: 3.2
@@ -150,8 +151,8 @@ const PRACTICE_MODES = {
         descKey: "modeTrackingDesc",
         duration: 40,
         targetCount: 1,
-        radius: [0.14, 0.24],
-        velocity: [1.25, 0.78, 0],
+        radius: [0.07, 0.13],
+        velocity: [1.8, 1.12, 0],
         scoreScale: 1,
         minRespawnDistance: 2.6,
         aimOnly: true
@@ -195,6 +196,7 @@ const I18N = {
         themePurpleOrangeLight: "Purple + Orange Light",
         soundEffects: "Sound Effects",
         fullscreenHint: "Press F11 to switch browser fullscreen on or off.",
+        autoFullscreen: "In-game Auto Fullscreen",
         showFps: "Show FPS",
         fov: "FOV (16:9 Horizontal)",
         crosshairCircle: "Circle",
@@ -339,6 +341,7 @@ const I18N = {
         themePurpleOrangeLight: "\ub0a8\ubcf4\ub77c\u00b7\uc8fc\ud669 \ub77c\uc774\ud2b8",
         soundEffects: "\ud6a8\uacfc\uc74c",
         fullscreenHint: "\uc804\uccb4\ud654\uba74\uc740 F11\ud0a4\ub85c \uc9c1\uc811 \ucf1c\uac70\ub098 \ub044\uc138\uc694.",
+        autoFullscreen: "\uc778\uac8c\uc784 \uc790\ub3d9 \uc804\uccb4\ud654\uba74",
         showFps: "FPS \ud45c\uc2dc",
         fov: "FOV (16:9 \uac00\ub85c)",
         crosshairCircle: "\uc6d0",
@@ -451,7 +454,7 @@ const I18N = {
 
 const practiceSettings = {
     precision: {
-        radius: readBoundedNumberSetting("goatRangePrecisionRadius", PRACTICE_SETTINGS_DEFAULTS.precision.radius, 0.08, 0.42),
+        radius: readMigratedBoundedNumberSetting("goatRangePrecisionRadius", PRACTICE_SETTINGS_DEFAULTS.precision.radius, 0.08, 0.42, [0.18, 0.13]),
         targetCount: Math.round(readBoundedNumberSetting("goatRangePrecisionTargetCount", PRACTICE_SETTINGS_DEFAULTS.precision.targetCount, 1, MAX_TARGET_COUNT)),
         duration: Math.round(readBoundedNumberSetting("goatRangePrecisionDuration", PRACTICE_SETTINGS_DEFAULTS.precision.duration, 15, 180)),
         color: readColorSetting("goatRangePrecisionColor", PRACTICE_SETTINGS_DEFAULTS.precision.color)
@@ -461,8 +464,8 @@ const practiceSettings = {
         color: readColorSetting("goatRangeReflexColor", PRACTICE_SETTINGS_DEFAULTS.reflex.color)
     },
     tracking: {
-        speed: readBoundedNumberSetting("goatRangeTrackingSpeed", PRACTICE_SETTINGS_DEFAULTS.tracking.speed, 0.2, 3),
-        radius: readBoundedNumberSetting("goatRangeTrackingRadius", PRACTICE_SETTINGS_DEFAULTS.tracking.radius, 0.08, 0.42),
+        speed: readMigratedBoundedNumberSetting("goatRangeTrackingSpeed", PRACTICE_SETTINGS_DEFAULTS.tracking.speed, 0.2, 3, [1.25]),
+        radius: readMigratedBoundedNumberSetting("goatRangeTrackingRadius", PRACTICE_SETTINGS_DEFAULTS.tracking.radius, 0.08, 0.42, [0.18, 0.13]),
         duration: Math.round(readBoundedNumberSetting("goatRangeTrackingDuration", PRACTICE_SETTINGS_DEFAULTS.tracking.duration, 15, 180)),
         movement: readTrackingMovementSetting(),
         color: readColorSetting("goatRangeTrackingColor", PRACTICE_SETTINGS_DEFAULTS.tracking.color)
@@ -474,8 +477,8 @@ const TARGET_BOUNDS = {
     maxX: 5.8,
     minY: 0.75,
     maxY: 4.25,
-    minZ: -15.5,
-    maxZ: -7.5
+    minZ: -7.4,
+    maxZ: -3.4
 };
 
 const dom = {
@@ -501,6 +504,7 @@ const dom = {
     languageSelect: document.getElementById("language-select"),
     themeSelect: document.getElementById("theme-select"),
     soundEffects: document.getElementById("sound-effects"),
+    autoFullscreen: document.getElementById("auto-fullscreen"),
     showFps: document.getElementById("show-fps"),
     fovValue: document.getElementById("fov-value"),
     fovRange: document.getElementById("fov-range"),
@@ -701,6 +705,7 @@ const settings = {
     themeMode: readThemeSetting(),
     soundEffects: localStorage.getItem("goatRangeSoundEffects") !== "false",
     leaderboardAutoSubmit: localStorage.getItem("goatRangeLeaderboardAutoSubmit") === "true",
+    autoFullscreen: localStorage.getItem("goatRangeAutoFullscreen") === "true",
     showFps: localStorage.getItem("goatRangeShowFps") === "true",
     fov: readNumberSetting("goatRangeFov", DEFAULT_HORIZONTAL_FOV),
     crosshairPreset: readCrosshairPreset(),
@@ -764,6 +769,7 @@ const state = {
     ignoreMouseUntil: 0,
     suppressShootUntil: 0,
     returnToPauseFromSettings: false,
+    autoFullscreenEngaged: false,
     camera: [0, 1.72, 2.9],
     forward: [0, 0, -1]
 };
@@ -790,6 +796,7 @@ syncLeaderboardAutoSubmitAvailability();
 dom.languageSelect.value = settings.languageMode;
 dom.themeSelect.value = settings.themeMode;
 dom.soundEffects.checked = settings.soundEffects;
+dom.autoFullscreen.checked = settings.autoFullscreen;
 dom.showFps.checked = settings.showFps;
 dom.fovValue.value = String(settings.fov);
 dom.fovRange.value = String(settings.fov);
@@ -980,6 +987,7 @@ function startGame() {
     state.resumeClickRequired = false;
     state.resumeAttemptId += 1;
     state.returnToPauseFromSettings = false;
+    state.autoFullscreenEngaged = false;
     state.resumeIgnorePointerUnlockUntil = 0;
     state.ignoreMouseUntil = 0;
     state.suppressShootUntil = 0;
@@ -998,6 +1006,7 @@ function startGame() {
     dom.settingsOverlay.classList.add("hidden");
     dom.settingsBtn.classList.add("hidden");
     showToast(t("live"));
+    requestInGameFullscreen();
     requestAimLock();
 }
 
@@ -1010,6 +1019,7 @@ function stopGame() {
     state.resumeClickRequired = false;
     state.resumeAttemptId += 1;
     state.returnToPauseFromSettings = false;
+    exitInGameFullscreen();
     state.resumeIgnorePointerUnlockUntil = 0;
     state.ignoreMouseUntil = 0;
     state.suppressShootUntil = 0;
@@ -1686,7 +1696,7 @@ function createTarget(previousPosition = null) {
     let position = [
         randomRange(TARGET_BOUNDS.minX, TARGET_BOUNDS.maxX),
         randomRange(TARGET_BOUNDS.minY, TARGET_BOUNDS.maxY),
-        isTracking ? -11.5 : randomRange(TARGET_BOUNDS.minZ, TARGET_BOUNDS.maxZ)
+        isTracking ? TRACKING_TARGET_Z : randomRange(TARGET_BOUNDS.minZ, TARGET_BOUNDS.maxZ)
     ];
 
     if (previousPosition) {
@@ -1720,9 +1730,18 @@ function createTarget(previousPosition = null) {
 }
 
 function createTrackingVelocity(mode) {
+    if (mode.velocity[1] <= 0) {
+        return [Math.random() < 0.5 ? -mode.velocity[0] : mode.velocity[0], 0, 0];
+    }
+
+    const direction = normalize([
+        randomSignedRange(0.35, 1),
+        randomSignedRange(0.35, 1),
+        0
+    ]);
     return [
-        randomSignedRange(mode.velocity[0] * 0.18, mode.velocity[0]),
-        mode.velocity[1] > 0 ? randomSignedRange(mode.velocity[1] * 0.18, mode.velocity[1]) : 0,
+        direction[0] * mode.velocity[0],
+        direction[1] * mode.velocity[0],
         0
     ];
 }
@@ -2103,6 +2122,7 @@ function openPauseMenu() {
     state.resumeAttemptId += 1;
     state.lockFallback = false;
     dom.pauseMenu.classList.remove("hidden");
+    exitInGameFullscreen();
 
     if (document.pointerLockElement === dom.canvas) {
         document.exitPointerLock();
@@ -2131,6 +2151,7 @@ function resumeGame() {
     state.suppressShootUntil = performance.now() + 450;
     dom.pauseMenu.classList.add("hidden");
     dom.settingsOverlay.classList.add("hidden");
+    requestInGameFullscreen();
     requestAimLock();
     showToast(t("clickToResume"), true);
     if (document.pointerLockElement === dom.canvas) {
@@ -2215,6 +2236,41 @@ function requestAimLock() {
         } catch {
             requestPointerLockFallback();
         }
+    }
+}
+
+function requestInGameFullscreen() {
+    if (!settings.autoFullscreen || document.fullscreenElement || !dom.gameScreen.requestFullscreen) {
+        return;
+    }
+
+    void dom.gameScreen.requestFullscreen().then(() => {
+        if (
+            settings.autoFullscreen
+            && state.active
+            && (!state.paused || state.resumePending)
+            && document.fullscreenElement === dom.gameScreen
+        ) {
+            state.autoFullscreenEngaged = true;
+            return;
+        }
+        state.autoFullscreenEngaged = false;
+        if (document.fullscreenElement === dom.gameScreen && document.exitFullscreen) {
+            void document.exitFullscreen().catch(() => {});
+        }
+    }).catch(() => {
+        state.autoFullscreenEngaged = false;
+    });
+}
+
+function exitInGameFullscreen() {
+    if (!state.autoFullscreenEngaged) {
+        return;
+    }
+
+    state.autoFullscreenEngaged = false;
+    if (document.fullscreenElement === dom.gameScreen && document.exitFullscreen) {
+        void document.exitFullscreen().catch(() => {});
     }
 }
 
@@ -2502,6 +2558,14 @@ function readBoundedNumberSetting(key, fallback, min, max) {
 
     const value = Number(rawValue);
     return Number.isFinite(value) ? clamp(value, min, max) : fallback;
+}
+
+function readMigratedBoundedNumberSetting(key, fallback, min, max, legacyDefaults = []) {
+    const stored = Number(localStorage.getItem(key));
+    if (Number.isFinite(stored) && legacyDefaults.some((legacyValue) => Math.abs(stored - legacyValue) < 0.0001)) {
+        return fallback;
+    }
+    return readBoundedNumberSetting(key, fallback, min, max);
 }
 
 function readColorSetting(key, fallback) {
@@ -3419,6 +3483,14 @@ function syncSoundEffects() {
     ensureAudio();
 }
 
+function syncAutoFullscreen() {
+    settings.autoFullscreen = dom.autoFullscreen.checked;
+    localStorage.setItem("goatRangeAutoFullscreen", String(settings.autoFullscreen));
+    if (!settings.autoFullscreen) {
+        exitInGameFullscreen();
+    }
+}
+
 function syncFpsUi(shouldStore = true) {
     dom.showFps.checked = settings.showFps;
     dom.fpsCounter.classList.toggle("hidden", !settings.showFps);
@@ -3592,6 +3664,7 @@ dom.settingsOverlay.addEventListener("click", (event) => {
 dom.languageSelect.addEventListener("change", syncLanguage);
 dom.themeSelect.addEventListener("change", syncTheme);
 dom.soundEffects.addEventListener("change", syncSoundEffects);
+dom.autoFullscreen.addEventListener("change", syncAutoFullscreen);
 dom.showFps.addEventListener("change", () => {
     settings.showFps = dom.showFps.checked;
     syncFpsUi();
@@ -4017,6 +4090,12 @@ document.addEventListener("pointerlockerror", () => {
             showToast(t("clickToResume"), true);
         }
     }, 120);
+});
+
+document.addEventListener("fullscreenchange", () => {
+    if (document.fullscreenElement !== dom.gameScreen) {
+        state.autoFullscreenEngaged = false;
+    }
 });
 
 document.addEventListener("mousemove", (event) => {

@@ -5,7 +5,8 @@
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>GOAT Range - Aim Trainer</title>
-    <link rel="stylesheet" href="style.css?v=20260603-purple-orange-themes">
+    <link rel="icon" type="image/jpeg" href="goat.jpg">
+    <link rel="stylesheet" href="style.css?v=20260603-purple-ui-controls">
 </head>
 
 <body>
@@ -476,6 +477,11 @@
                         Press F11 to switch browser fullscreen on or off.
                     </div>
                     <label class="toggle-row span-2">
+                        <span data-i18n="autoFullscreen">In-game Auto Fullscreen</span>
+                        <input id="auto-fullscreen" type="checkbox">
+                        <i aria-hidden="true"></i>
+                    </label>
+                    <label class="toggle-row span-2">
                         <span data-i18n="showFps">Show FPS</span>
                         <input id="show-fps" type="checkbox">
                         <i aria-hidden="true"></i>
@@ -595,7 +601,7 @@
         </section>
     </main>
 
-    <script type="module" src="script.js?v=20260603-purple-orange-themes"></script>
+    <script type="module" src="script.js?v=20260603-close-targets"></script>
 </body>
 
 </html>

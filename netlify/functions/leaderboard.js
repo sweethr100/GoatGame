@@ -2,12 +2,13 @@ const crypto = require("node:crypto");
 
 const ALLOWED_MODES = new Set(["precision", "reflex", "tracking"]);
 const MAX_LEADERBOARD_ROWS = 10;
+const MAX_PLAYER_SCORES_PER_MODE = 5;
 const MAX_SUBMISSIONS_PER_WINDOW = 6;
 const RATE_LIMIT_WINDOW_MS = 10 * 60 * 1000;
 const PRACTICE_SETTINGS_DEFAULTS = {
-    precision: { radius: 0.18, targetCount: 3, duration: 40 },
+    precision: { radius: 0.09, targetCount: 3, duration: 40 },
     reflex: { duration: 40 },
-    tracking: { speed: 1.25, radius: 0.18, duration: 40, movement: "random" }
+    tracking: { speed: 1.8, radius: 0.09, duration: 40, movement: "random" }
 };
 
 function json(statusCode, body) {
@@ -184,6 +185,27 @@ async function enforceRateLimit(clientHash) {
     }
 }
 
+async function prunePlayerScores(playerName, mode) {
+    const query = new URLSearchParams({
+        select: "id",
+        player_name: `eq.${playerName}`,
+        mode: `eq.${mode}`,
+        order: "score.desc,created_at.asc",
+        offset: String(MAX_PLAYER_SCORES_PER_MODE)
+    });
+    const extraScores = await supabaseRequest(`leaderboard_scores?${query}`);
+
+    if (extraScores.length === 0) {
+        return;
+    }
+
+    const ids = extraScores.map(({ id }) => id).join(",");
+    await supabaseRequest(`leaderboard_scores?id=in.(${ids})`, {
+        method: "DELETE",
+        headers: { Prefer: "return=minimal" }
+    });
+}
+
 async function submitScore(event) {
     let payload;
     try {
@@ -204,6 +226,7 @@ async function submitScore(event) {
         headers: { Prefer: "return=minimal" },
         body: JSON.stringify({ ...score, client_hash: clientHash })
     });
+    await prunePlayerScores(score.player_name, score.mode);
 
     return json(201, { scores: await listScores(score.mode) });
 }
