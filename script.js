@@ -4,6 +4,12 @@ const TRACKING_TONE_INTERVAL_MS = 180;
 const RESTART_UNLOCK_DELAY_MS = 1500;
 const NANO_FEEDBACK_MAX_SENTENCES = 4;
 const NANO_FEEDBACK_MAX_CHARACTERS = 720;
+const NANO_COACH_SYSTEM_PROMPT = [
+    "You are GOAT RANGE's local aim-training coach.",
+    "Analyze only the latest completed game session.",
+    "Do not use memory from earlier sessions, do not invent long-term trends, and never repeat a sentence or paragraph.",
+    "Keep feedback specific, practical, and concise."
+].join(" ");
 const TRACKING_DIRECTION_CHANGE_SECONDS = [0.28, 0.95];
 const TAU = Math.PI * 2;
 const MAX_ABS_YAW = TAU * 1000;
@@ -1259,8 +1265,13 @@ async function submitLeaderboardScore(summary = lastCompletedDrillSummary) {
         }
 
         leaderboardMode = summary.mode;
-        leaderboardScoresByMode.set(leaderboardMode, Array.isArray(data.scores) ? data.scores : []);
-        setLeaderboardSubmitStatus();
+        if (Array.isArray(data.scores)) {
+            leaderboardScoresByMode.set(leaderboardMode, data.scores);
+            renderLeaderboardScores(data.scores);
+        } else {
+            void loadLeaderboard(summary.mode);
+        }
+        setLeaderboardSubmitStatus("scoreSubmitted");
     } catch (error) {
         console.warn("Leaderboard score could not be submitted:", error);
         setLeaderboardSubmitStatus("scoreSubmitFailed");
@@ -1349,6 +1360,32 @@ function showNanoFeedbackFailure(key, canRetry = true) {
     dom.nanoFeedback.classList.remove("is-generating", "is-ready", "is-streaming");
 }
 
+function getNanoCoachSessionOptions() {
+    return {
+        initialPrompts: [
+            { role: "system", content: NANO_COACH_SYSTEM_PROMPT }
+        ]
+    };
+}
+
+function destroyNanoCoachSession(session = nanoCoachSession) {
+    if (!session) {
+        if (!nanoCoachSession) {
+            nanoCoachSessionPromise = null;
+        }
+        return;
+    }
+    try {
+        session.destroy();
+    } catch (error) {
+        console.warn("Gemini Nano session could not be destroyed:", error);
+    }
+    if (session === nanoCoachSession) {
+        nanoCoachSession = null;
+        nanoCoachSessionPromise = null;
+    }
+}
+
 async function checkNanoCoachAvailability() {
     if (!globalThis.LanguageModel) {
         nanoCoachAvailability = "unavailable";
@@ -1356,7 +1393,7 @@ async function checkNanoCoachAvailability() {
     }
 
     try {
-        nanoCoachAvailability = await globalThis.LanguageModel.availability();
+        nanoCoachAvailability = await globalThis.LanguageModel.availability(getNanoCoachSessionOptions());
     } catch (error) {
         console.warn("Gemini Nano availability could not be checked:", error);
         nanoCoachAvailability = "unknown";
@@ -1382,6 +1419,7 @@ function prepareNanoCoach() {
 
     setNanoFeedbackStatus("nanoPreparing");
     nanoCoachSessionPromise = globalThis.LanguageModel.create({
+        ...getNanoCoachSessionOptions(),
         monitor(monitor) {
             monitor.addEventListener("downloadprogress", (event) => {
                 const progress = `${Math.round(event.loaded * 100)}%`;
@@ -1566,6 +1604,8 @@ async function generateNanoFeedback(summary) {
         if (requestId === nanoCoachRequestId) {
             showNanoFeedbackFailure("nanoError");
         }
+    } finally {
+        destroyNanoCoachSession(session);
     }
 }
 

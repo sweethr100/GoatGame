@@ -226,9 +226,14 @@ async function submitScore(event) {
         headers: { Prefer: "return=minimal" },
         body: JSON.stringify({ ...score, client_hash: clientHash })
     });
-    await prunePlayerScores(score.player_name, score.mode);
 
-    return json(201, { scores: await listScores(score.mode) });
+    try {
+        await prunePlayerScores(score.player_name, score.mode);
+        return json(201, { scores: await listScores(score.mode) });
+    } catch (error) {
+        console.error("Leaderboard refresh failed after submission:", error);
+        return json(201, { scores: null, refresh_failed: true });
+    }
 }
 
 exports.handler = async function(event) {
